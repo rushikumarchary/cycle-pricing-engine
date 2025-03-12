@@ -51,21 +51,8 @@ This project focuses on calculating the prices for various brands with multiple 
 - Saved estimates history
 - User profile management
 
-### 5. Order Management (New Feature)
 
-- Place new orders based on cycle configurations
-- Track order status
-- View order history
-- Manage order cancellations and refunds
-
-### 6. Reporting and Analytics (New Feature)
-
-- Generate reports on inventory usage
-- Sales and revenue tracking
-- Export data to CSV/PDF
-- Daily, weekly, and monthly analytics
-
-### 7. Responsive Design
+### 5. Responsive Design
 
 - Mobile-friendly interface
 - Responsive navigation
