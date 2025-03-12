@@ -8,22 +8,22 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest
-@ActiveProfiles("test")
-@Transactional
+@ActiveProfiles("test") // Uses application-test.properties
+@Transactional // Rolls back data after each test
 class BrandServiceTest {
 
 
-    private final BrandService brandService;
-
+    @MockitoBean// Mock JWTService to avoid security dependency issues
+    private JWTService jwtService;
     @Autowired
-    public BrandServiceTest(BrandService brandService) {
-        this.brandService = brandService;
-    }
+    private BrandService brandService;
+
 
     // this test pass if the brand not found then it will be throws excepting exception
     @Test
@@ -35,17 +35,17 @@ class BrandServiceTest {
     // this test pass only if the brand is inactive then should throw expected exception
     @Test
     void testGetBrandById_InactiveBrand() {
-        BrandNotFound exception = assertThrows(BrandNotFound.class, () -> brandService.getBrand(1));
+        BrandNotFound exception = assertThrows(BrandNotFound.class, () -> brandService.getBrand(2));
         System.out.println(" Test Passed: " + exception.getMessage());
     }
 
     // this pass when brand is active and present in database and same brand name
     @Test
     void testGetBrandById_Success() {
-        BrandResponse response = brandService.getBrand(2);
+        BrandResponse response = brandService.getBrand(1);
         assertNotNull(response);
-        assertEquals(2, response.getId());
-        assertEquals("GIANT", response.getName());
+        assertEquals(1, response.getId());
+        assertEquals("HERO", response.getName());
         System.out.println(" Test Passed: " + response);
     }
 
@@ -59,7 +59,7 @@ class BrandServiceTest {
     //   check brand is inactive then throw exception
     @Test
     void testGetBrandByName_BrandIsInactive() {
-        BrandNotFound ex = assertThrows(BrandNotFound.class, () -> brandService.getBrandByName("hero"));
+        BrandNotFound ex = assertThrows(BrandNotFound.class, () -> brandService.getBrandByName("GIANT"));
         System.out.println("Test Pass : " + ex.getMessage());
     }
 
@@ -77,7 +77,7 @@ class BrandServiceTest {
     @Test
     @WithMockUser(username = "testUser", roles = {"ADMIN"})
     void testAddBrand_DuplicateActiveBrand() {
-        Exception exception = assertThrows(DuplicateBrand.class, () -> brandService.addBrand("GIANT"));
+        Exception exception = assertThrows(DuplicateBrand.class, () -> brandService.addBrand("HERO"));
         System.out.println(" Test Passed: " + exception.getMessage());
     }
 
@@ -85,9 +85,9 @@ class BrandServiceTest {
     @Test
     @WithMockUser(username = "testUser", roles = {"ADMIN"})
     void testAddBrand_ReactivateBrand() {
-        BrandResponse response = brandService.addBrand("HERO");
+        BrandResponse response = brandService.addBrand("GIANT");
         assertNotNull(response);
-        assertEquals("HERO", response.getName());
+        assertEquals("GIANT", response.getName());
         System.out.println(" Test Passed: " + response);
     }
 
