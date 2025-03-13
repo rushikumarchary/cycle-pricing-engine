@@ -22,7 +22,8 @@ public interface ItemRepository extends JpaRepository<Items, Long> {
 
 	List<Items> findByBrand(Brands brand);
 
-	List<Items> findByIsActive(ActiveStatus Active);
+    @Query("SELECT i FROM Items i WHERE i.isActive = 'Y'")
+    List<Items> findAllActiveItems();
 
 	@Query("SELECT i FROM Items i WHERE i.brand.brandName = :brandName AND i.isActive = 'Y'")
 	List<Items> findActiveItemsByBrand(@Param("brandName") String brandName);

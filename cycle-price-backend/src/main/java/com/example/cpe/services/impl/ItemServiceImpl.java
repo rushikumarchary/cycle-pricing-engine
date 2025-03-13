@@ -34,17 +34,15 @@ public class ItemServiceImpl implements ItemService {
 		this.itemRepository = repository;
 		this.brandRepository= brandRepository;
 	}
-	final private ActiveStatus Active = ActiveStatus.Y;
 	
-	final private ActiveStatus inActive = ActiveStatus.N;
 
 	
     // Get all active items
-    @Override
-    public List<Items> getAllItems() {
-        List<Items> items = itemRepository.findByIsActive(Active); // Fetch active items with 'Y'
-        return items;
-    }
+	@Override
+	public List<Items> getAllItems() {
+	    return itemRepository.findAllActiveItems(); // Fetch active items
+	}
+
 
     // Create a new item with brand validation
     @Override
@@ -60,7 +58,7 @@ public class ItemServiceImpl implements ItemService {
         item.setPrice(itemRequest.getPrice());
         item.setValidTo(itemRequest.getValidTo());
         item.setBrand(brand);
-        item.setIsActive(Active); // Default Active
+        item.setIsActive(ActiveStatus.Y); // Default Active
         item.setModifiedBy(SecurityUtil.getLoggedInUsername()); // Set ModifiedBy with logged-in user
 
         // Save Item to DB
@@ -75,7 +73,7 @@ public class ItemServiceImpl implements ItemService {
         Items items = itemRepository.findById(id)
                 .orElseThrow(() -> new ItemNotFound("Item with id " + id + " not found"));
 
-        if (inActive.equals(items.getIsActive())) {
+        if (ActiveStatus.N.equals(items.getIsActive())) {
             throw new ItemNotFound("Item with ID " + id + " is not active ");
         }
 
@@ -88,7 +86,7 @@ public class ItemServiceImpl implements ItemService {
         Items existingItem = itemRepository.findById(id)
                 .orElseThrow(() -> new ItemNotFound("Item with id " + id + " not found"));
 
-        if (!Active.equals(existingItem.getIsActive())) {
+        if (!ActiveStatus.Y.equals(existingItem.getIsActive())) {
             throw new ItemNotFound("Item with ID " + id + " is not active. Update is not allowed.");
         }
 
@@ -110,7 +108,7 @@ public class ItemServiceImpl implements ItemService {
         if (item.isPresent()) {
             Items deleteItem = item.get();
             deleteItem.setModifiedBy(SecurityUtil.getLoggedInUsername()); // Set ModifiedBy with logged-in user
-            deleteItem.setIsActive(inActive); // Soft Delete by setting isActive to 'N'
+            deleteItem.setIsActive(ActiveStatus.N); // Soft Delete by setting isActive to 'N'
             itemRepository.save(deleteItem);
         }
     }
@@ -121,7 +119,7 @@ public class ItemServiceImpl implements ItemService {
         Brands brand = brandRepository.findByBrandName(brandName)
                 .orElseThrow(() -> new BrandNotFound("Brand with name '" + brandName + "' not found."));
 
-        if (inActive.equals(brand.getIsActive())) {
+        if (ActiveStatus.N.equals(brand.getIsActive())) {
             throw new BrandNotFound("Brand '" + brandName + "' is inactive.");
         }
 
