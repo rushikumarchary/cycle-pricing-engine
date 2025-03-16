@@ -1,5 +1,6 @@
 package com.example.cpe.controller;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
@@ -21,6 +22,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 
 @RestController
 @RequestMapping("/api/items")
@@ -78,6 +80,20 @@ public class ItemController {
             @RequestBody ItemRequest itemRequest) {
         ItemResponse updatedItem = itemService.updateItem(id, itemRequest);
         return ResponseEntity.ok(updatedItem);
+    }
+
+    @Operation(summary = "Update Item Price", description = "Update the price of an item by its ID")
+    @PatchMapping("/update/price")
+    public ResponseEntity<ItemResponse> updateItemPrice(@RequestParam(name = "itemId") Long itemId, @RequestParam(name = "price") Double price) {
+        return new ResponseEntity<>(itemService.updateItemPrice(itemId, price), HttpStatus.ACCEPTED);
+    }
+
+    @Operation(summary = "Update Item valid Date and Time",
+            description = "Update the valid date of an item by its ID",
+            security = @SecurityRequirement(name = "basicAuth"))
+    @PatchMapping("/update/date-time")
+    public ResponseEntity<ItemResponse> updateItemValidDateTime(@RequestParam(name = "itemId") Long itemId,@RequestParam(name = "validTo") String validTo) {
+        return new ResponseEntity<>(itemService.updateValidDate(validTo, itemId), HttpStatus.CREATED);
     }
 
     @DeleteMapping("/{id}")

@@ -63,7 +63,7 @@ class ItemServiceImplTest {
 
     @Test
     void testGetAllItems() {
-        when(itemRepository.findByIsActive(Active)).thenReturn(Arrays.asList(item));
+        when(itemRepository.findAllActiveItems()).thenReturn(Arrays.asList(item));
 
         List<Items> items = itemService.getAllItems();
         assertEquals(1, items.size());

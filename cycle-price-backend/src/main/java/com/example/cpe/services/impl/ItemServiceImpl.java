@@ -1,12 +1,12 @@
 package com.example.cpe.services.impl;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.example.cpe.config.SecurityUtil;
@@ -16,13 +16,12 @@ import com.example.cpe.dto.ItemResponse;
 import com.example.cpe.entities.Brands;
 import com.example.cpe.entities.Items;
 import com.example.cpe.exception.BrandNotFound;
+import com.example.cpe.exception.InvalidDateFormat;
 import com.example.cpe.exception.ItemNotFound;
 import com.example.cpe.repository.BrandRepository;
 import com.example.cpe.repository.ItemRepository;
 import com.example.cpe.services.ItemService;
 
-import io.micrometer.common.util.StringUtils;
-import jakarta.transaction.Transactional;
 
 @Service
 public class ItemServiceImpl implements ItemService {
@@ -112,6 +111,49 @@ public class ItemServiceImpl implements ItemService {
             itemRepository.save(deleteItem);
         }
     }
+    // Convert validTo String to Date
+    private Date convertDate(String date) {
+        // Convert validTo String to Date
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        try {
+            return sdf.parse(date);
+        } catch (ParseException e) {
+            throw new InvalidDateFormat("Invalid date format. Use 'yyyy-MM-dd HH:mm:ss'");
+        }
+
+    }
+
+    public ItemResponse updateItemPrice(Long id, Double newPrice) {
+        Items item = itemRepository.findById(id)
+                .orElseThrow(() -> new ItemNotFound("Item not found with ID: " + id));
+        item.setPrice(newPrice);
+        item.setModifiedBy(SecurityUtil.getLoggedInUsername());
+        // Update the item
+        Items savedItem = itemRepository.save(item);
+        return mapToItemResponse(savedItem);
+
+    }
+
+
+    public ItemResponse updateValidDate(String validTo, Long itemId) {
+        // Convert the string into date
+        Date parsedDate = convertDate(validTo);
+
+        Items item = itemRepository.findById(itemId)
+                .orElseThrow(() -> new ItemNotFound("Item with ID " + itemId + " not found"));
+
+        item.setValidTo(parsedDate);
+        item.setModifiedBy(SecurityUtil.getLoggedInUsername());
+        Items savedItem = itemRepository.save(item);
+
+        return ItemResponse.builder()
+                .itemId(savedItem.getItemId())
+                .itemName(savedItem.getItemName())
+                .itemType(savedItem.getItemType())
+                .validTo(savedItem.getValidTo())
+                .build();
+    }
+
 
     // Get Items by Brand Name
     @Override

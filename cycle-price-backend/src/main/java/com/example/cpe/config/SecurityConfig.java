@@ -2,6 +2,7 @@ package com.example.cpe.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -49,8 +50,9 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .cors(withDefaults())
             .authorizeHttpRequests(auth -> auth
-            	     .requestMatchers("/api/brands/**", "/api/items/**")
-                     .hasAnyRole("ADMIN", "MANAGER") // Allow both roles
+            		.requestMatchers(HttpMethod.GET, "/api/brands/**","/api/items/**").permitAll() 
+            	     .requestMatchers("/api/calculateprice/**").permitAll()
+            		 .requestMatchers("/api/brands/**").hasAnyRole("ADMIN", "MANAGER") // Allow both roles
                      .anyRequest().permitAll() // Allow all other requests without authentication
              )
             .formLogin(withDefaults())

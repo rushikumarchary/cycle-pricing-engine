@@ -76,7 +76,7 @@ class ItemRepositoryTest {
 
     @Test
     void testFindByIsActive() {
-        List<Items> activeItems = itemRepository.findByIsActive(ActiveStatus.Y);
+        List<Items> activeItems = itemRepository.findAllActiveItems();
         assertEquals(2, activeItems.size());
     }
 

@@ -24,6 +24,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 
 @RestController
 @RequestMapping("/api/brands")
+@CrossOrigin(origins = "http://localhost:5173")
 @Tag(name = "Brand Controller", description = "Manage cycle brands")
 public class BrandController {
 

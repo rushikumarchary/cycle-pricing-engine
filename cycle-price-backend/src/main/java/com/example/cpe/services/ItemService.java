@@ -13,4 +13,6 @@ public interface ItemService {
     public List<ItemResponse> getItemsByBrand(String brandName);
 	ItemResponse createItem(ItemRequest itemRequest);
 	ItemResponse updateItem(Long id, ItemRequest itemRequest);
+	public ItemResponse updateItemPrice(Long id, Double newPrice);
+	 public ItemResponse updateValidDate(String validTo, Long itemId);
 }

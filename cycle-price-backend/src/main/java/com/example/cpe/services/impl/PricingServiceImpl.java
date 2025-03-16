@@ -4,24 +4,116 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.ZoneId;
 import java.util.*;
+import java.util.stream.Collectors;
+
 import org.springframework.stereotype.Service;
+
+import com.example.cpe.dto.ActiveStatus;
+import com.example.cpe.dto.BrandResponse;
+import com.example.cpe.entities.Brands;
 import com.example.cpe.entities.Items;
+import com.example.cpe.exception.BrandNotFound;
+import com.example.cpe.exception.ItemNotFound;
+import com.example.cpe.repository.BrandRepository;
 import com.example.cpe.repository.ItemRepository;
 import com.example.cpe.services.PricingService;
+
 
 @Service
 public class PricingServiceImpl implements PricingService {
     
-    final private ItemRepository itemRepository;
-    public PricingServiceImpl(ItemRepository itemRepository) {
-        this.itemRepository = itemRepository;
-    }
+	 final private BrandRepository brandRepository;
+	    final private ItemRepository itemRepository;
+
+	    public PricingServiceImpl(BrandRepository brandRepository,ItemRepository itemRepository) {
+	        this.brandRepository = brandRepository;
+	        this.itemRepository=itemRepository;
+	    }
 
     private static final BigDecimal GST_RATE = BigDecimal.valueOf(0.18);
     private static final BigDecimal DISCOUNT_10 = BigDecimal.valueOf(0.10);
     private static final BigDecimal DISCOUNT_5 = BigDecimal.valueOf(0.05);
 
+    
+    public List<BrandResponse> getAllBrandsForCycle() {
+        List<String> requiredItemTypes = List.of("Frame", "Handlebar", "Seating", "Wheel", "Brakes", "Tyre", "Chain Assembly");
 
+        List<Brands> activeBrands = brandRepository.findAllActiveBrands();
+        if (activeBrands.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<Items> activeItems = itemRepository.findByBrandInAndIsActive(activeBrands, ActiveStatus.Y);
+
+        // Creating a brand-to-itemType mapping
+        Map<Integer, Set<String>> brandItemsMap = new HashMap<>();
+        
+        for (Items item : activeItems) {
+            int brandId = item.getBrand().getBrandId();
+            brandItemsMap.putIfAbsent(brandId, new HashSet<>());
+            brandItemsMap.get(brandId).add(item.getItemType());
+        }
+
+        // Filtering brands based on required item types
+        List<BrandResponse> result = new ArrayList<>();
+        
+        for (Brands brand : activeBrands) {
+            Set<String> itemTypes = brandItemsMap.getOrDefault(brand.getBrandId(), Collections.emptySet());
+            if (itemTypes.containsAll(requiredItemTypes)) {
+                result.add(new BrandResponse(brand.getBrandId(), brand.getBrandName()));
+            }
+        }
+
+        return result;
+    }
+
+
+    public List<BrandResponse> getAllBrands() {
+        List<Brands> brands = brandRepository.findAll();
+        List<BrandResponse> result = new ArrayList<>();
+
+        for (Brands brand : brands) {
+            if (brand.getIsActive() == ActiveStatus.Y) {
+                result.add(new BrandResponse(brand.getBrandId(), brand.getBrandName()));
+            }
+        }
+
+        return result;
+    }
+
+    public Map<String, List<Map<String, Object>>> getGroupedItemNameAndTypeByBrandName(int id) {
+        Brands brand = brandRepository.findById(id)
+                .orElseThrow(() -> new BrandNotFound("Brand with id '" + id + "' not found."));
+
+        // Check if brand is inactive
+        if (brand.getIsActive() == ActiveStatus.N) {
+            throw new BrandNotFound("Brand with id '" + id + "' not Found");
+        }
+
+        // Fetch all items for the given brand
+        List<Items> items = itemRepository.findByBrand(brand);
+
+        // If no items are found, throw an exception
+        if (items.isEmpty()) {
+            throw new ItemNotFound("Items with Brand id '" + id + "' not found.");
+        }
+
+        // Group items by type
+        Map<String, List<Map<String, Object>>> groupedItems = new HashMap<>();
+
+        for (Items item : items) {
+            if (item.getIsActive() == ActiveStatus.Y) { // Filter active items
+                Map<String, Object> itemDetails = new HashMap<>();
+                itemDetails.put("item_id", item.getItemId());
+                itemDetails.put("item_name", item.getItemName());
+
+                // Add to the grouped map
+                groupedItems.computeIfAbsent(item.getItemType(), k -> new ArrayList<>()).add(itemDetails);
+            }
+        }
+
+        return groupedItems;
+    }
 
     @Override
     public Map<String, Object> calculatePrice(Map<String, Map<String, Object>> cycleConfig, Date pricingDate) {
