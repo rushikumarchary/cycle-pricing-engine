@@ -3,7 +3,7 @@ node_modules/
 
 # Ignore package-lock.json and package.json in all subdirectories
 **/package-lock.json
-**/package.json
+
 
 # Ignore Maven/Java build files in backend
 **/target/
@@ -20,6 +20,7 @@ Thumbs.db
 **/.idea/
 **/*.iml
 **/.vscode/
+**/.qodo
 
 # Ignore wrapper and build files
 **/.mvn/
