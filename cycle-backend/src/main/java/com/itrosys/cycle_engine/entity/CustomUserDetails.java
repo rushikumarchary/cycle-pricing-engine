@@ -7,16 +7,19 @@ import org.springframework.security.core.userdetails.UserDetails;
 import java.util.Collection;
 import java.util.Collections;
 
-public class UserPrincipal implements UserDetails {
+public class CustomUserDetails implements UserDetails {
 
 
     private  Users user;
-    public UserPrincipal (Users user){
+    public CustomUserDetails(Users user){
         this.user= user;
     }
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return Collections.singleton(new SimpleGrantedAuthority(user.getRole().getName()));
+    }
+    public String getEmail() {
+        return user.getEmail();  // Ensure that Users entity has an getEmail() method
     }
 
     @Override

@@ -4,6 +4,7 @@ import axios from "axios";
 import Swal from "sweetalert2";
 import { AiOutlineEye, AiOutlineEyeInvisible } from "react-icons/ai";
 import { FaBicycle, FaTools, FaCogs } from "react-icons/fa";
+import DomainName from "../../utils/config";
 
 function SignUp() {
   const [formData, setFormData] = useState({
@@ -122,7 +123,7 @@ function SignUp() {
     });
 
     try {
-      await axios.post("http://localhost:8080/auth/signUp", formData);
+      await axios.post(`${DomainName}/auth/signUp`, formData);
 
       // Close loading alert and show success message
       // await Swal.fire({

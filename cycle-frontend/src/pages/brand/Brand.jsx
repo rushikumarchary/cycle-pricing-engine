@@ -3,7 +3,14 @@ import axios from "axios";
 import Swal from "sweetalert2";
 import { FaEdit, FaTrash, FaPlus, FaList } from "react-icons/fa";
 import { useNavigate, useLocation } from "react-router-dom";
-import { getAuthHeader, isAuthenticated, debugToken, hasManagementAccess, handleApiError } from '../../utils/auth';
+import {
+  getAuthHeader,
+  isAuthenticated,
+  debugToken,
+  hasManagementAccess,
+  handleApiError,
+} from "../../utils/auth";
+import DomainName from "../../utils/config";
 
 const Brand = () => {
   const [brands, setBrands] = useState([]);
@@ -21,14 +28,14 @@ const Brand = () => {
   // Add authentication check
   useEffect(() => {
     const checkAuth = () => {
-      console.log('Checking authentication...');
+      console.log("Checking authentication...");
       debugToken();
       if (!isAuthenticated()) {
-        console.log('Authentication failed');
-        navigate('/signIn', { state: { redirectTo: location.pathname } });
+        console.log("Authentication failed");
+        navigate("/signIn", { state: { redirectTo: location.pathname } });
         return;
       }
-      console.log('Authentication successful');
+      console.log("Authentication successful");
     };
 
     checkAuth();
@@ -40,22 +47,19 @@ const Brand = () => {
   // Fetch brands with auth check
   const fetchBrands = async () => {
     try {
-      console.log('Fetching brands...');
+      console.log("Fetching brands...");
       debugToken();
-      
+
       if (!isAuthenticated()) {
-        console.log('Not authenticated during fetch');
+        console.log("Not authenticated during fetch");
         return;
       }
 
       const headers = getAuthHeader();
-      console.log('Request headers:', headers);
+      console.log("Request headers:", headers);
 
-      const response = await axios.get(
-        "http://localhost:8080/brand/brands",
-        headers
-      );
-      console.log('Brands fetch successful:', response);
+      const response = await axios.get(`${DomainName}/brand/brands`, headers);
+      console.log("Brands fetch successful:", response);
       setBrands(response.data);
 
       if (response.data.length === 0) {
@@ -66,11 +70,11 @@ const Brand = () => {
         });
       }
     } catch (error) {
-      console.error('Fetch brands error:', error);
+      console.error("Fetch brands error:", error);
       if (error.response) {
-        console.log('Error response:', error.response);
-        console.log('Error status:', error.response.status);
-        console.log('Error data:', error.response.data);
+        console.log("Error response:", error.response);
+        console.log("Error status:", error.response.status);
+        console.log("Error data:", error.response.data);
       }
       handleApiError(error);
     }
@@ -79,11 +83,11 @@ const Brand = () => {
   useEffect(() => {
     if (!hasManagementAccess()) {
       Swal.fire({
-        icon: 'error',
-        title: 'Access Denied',
-        text: 'Only Administrators and Managers can manage brands.',
+        icon: "error",
+        title: "Access Denied",
+        text: "Only Administrators and Managers can manage brands.",
       });
-      navigate('/');
+      navigate("/");
       return;
     }
     fetchBrands();
@@ -125,7 +129,7 @@ const Brand = () => {
 
     try {
       await axios.post(
-        `http://localhost:8080/brand/add?name=${newBrandName}`,
+        `${DomainName}/brand/add?name=${newBrandName}`,
         null,
         getAuthHeader()
       );
@@ -160,7 +164,7 @@ const Brand = () => {
 
     try {
       await axios.patch(
-        `http://localhost:8080/brand/update`,
+        `${DomainName}/brand/update`,
         {
           id: editingBrand.id,
           newBrandName: newBrandName,
@@ -204,7 +208,7 @@ const Brand = () => {
       if (result.isConfirmed) {
         try {
           await axios.delete(
-            `http://localhost:8080/brand/delete/${id}`,
+            `${DomainName}/brand/delete/${id}`,
             getAuthHeader()
           );
 
@@ -256,38 +260,38 @@ const Brand = () => {
   return (
     <div className="container mx-auto px-4 py-8">
       {brands.length > 0 ? (
-        <div>
-          {/* Add Brand Button */}
-          <div className="mb-5 w-full md:w-3/4 mx-auto">
-            <button
-              onClick={() => setIsAddModalOpen(true)}
-              className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 flex items-center"
-            >
-              <FaPlus className="mr-2" /> Add Brand
-            </button>
-          </div>
-
-          <div className="mb-5 w-3/4 mx-auto flex items-center gap-4">
-            <input
-              type="text"
-              placeholder="Search brands..."
-              className="p-2 border rounded"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-            {searchTerm.length > 0 && (
+        <>
+          <div className=" w-3/4  px-4 mx-auto flex items-center justify-between">
+            <span className="flex items-center gap-4">
+              <input
+                type="text"
+                placeholder="Search brands..."
+                className="p-2 border rounded"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+              {searchTerm.length > 0 && (
+                <button
+                  onClick={() => setSearchTerm("")}
+                  className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
+                >
+                  Clear Search
+                </button>
+              )}
+            </span>
+            {/* Add Brand Button */}
+            <span>
               <button
-                onClick={() => setSearchTerm("")}
-                className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
+                onClick={() => setIsAddModalOpen(true)}
+                className="bg-blue-700 text-white px-4 py-2 rounded hover:bg-blue-800 flex items-center"
               >
-                Clear Search
+                <FaPlus className="mr-2" /> Add Brand
               </button>
-            )}
+            </span>
           </div>
-
           {/* Add Search Results Info */}
           {searchTerm && (
-            <div className="mb-4 w-full md:w-3/4 mx-auto">
+            <div className="w-full px-4 md:w-3/4 mx-auto">
               {filteredBrands.length > 0 ? (
                 <p className="text-gray-600">
                   Found {filteredBrands.length} brand(s) matching: {searchTerm}
@@ -302,8 +306,8 @@ const Brand = () => {
 
           {/* Add this conditional rendering for the table */}
           {/* {brands.length > 0 ? ( */}
-          <div className="overflow-x-auto w-full md:w-3/4 mx-auto">
-            <table className="min-w-full bg-white">
+          <div className="overflow-x-auto w-full md:w-3/4 mx-auto p-4">
+            <table className="min-w-full bg-white rounded-lg shadow-[0_10px_20px_rgba(23,23,23,1)]">
               <thead className="bg-gray-100">
                 <tr>
                   <th className="px-6 py-3 text-center">Brand Name</th>
@@ -318,7 +322,7 @@ const Brand = () => {
                       <div className="flex justify-center  items-center gap-9">
                         <button
                           onClick={() => handleViewItems(brand.name)}
-                          className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 flex items-center text-sm"
+                          className="bg-blue-400 text-white px-3 py-1 rounded hover:bg-blue-600 flex items-center text-sm"
                         >
                           <FaList className="mr-1 hidden sm:block" />
                           <span>View Items</span>
@@ -401,7 +405,7 @@ const Brand = () => {
                 </div>
               )}
           </div>
-        </div>
+        </>
       ) : (
         <div className="w-full md:w-3/4 mx-auto text-center py-8">
           <div className="bg-white rounded-lg shadow-md p-6">

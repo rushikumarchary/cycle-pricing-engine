@@ -3,6 +3,7 @@ import Swal from "sweetalert2";
 import PriceBreakdown from "../../components/price_breakdown/PriceBreakdown";
 import axios from "axios";
 import { getAuthHeader } from "../../utils/auth";
+import DomainName from "../../utils/config";
 
 function CalculateForm() {
   const [formData, setFormData] = useState({
@@ -27,7 +28,7 @@ function CalculateForm() {
   useEffect(() => {
     // Fetch brands on component mount
     axios
-      .get("http://localhost:8080/cycle/brands", getAuthHeader())
+      .get(`${DomainName}/cycle/brands`, getAuthHeader())
       .then((response) => setBrands(response.data))
       .catch((error) => {
         console.error("Error fetching brands:", error);
@@ -52,7 +53,7 @@ function CalculateForm() {
 
     try {
       const response = await axios.get(
-        `http://localhost:8080/cycle/byBrand/${brandId}`,
+        `${DomainName}/cycle/byBrand/${brandId}`,
         getAuthHeader()
       );
       setItems(response.data);
@@ -129,7 +130,7 @@ function CalculateForm() {
 
       axios
         .post(
-          "http://localhost:8080/cycle/calculate-price",
+          `${DomainName}/cycle/calculate-price`,
           requestData,
           getAuthHeader()
         )

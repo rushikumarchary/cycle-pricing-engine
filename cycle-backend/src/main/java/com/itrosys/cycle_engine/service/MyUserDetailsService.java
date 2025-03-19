@@ -1,6 +1,6 @@
 package com.itrosys.cycle_engine.service;
 
-import com.itrosys.cycle_engine.entity.UserPrincipal;
+import com.itrosys.cycle_engine.entity.CustomUserDetails;
 import com.itrosys.cycle_engine.entity.Users;
 import com.itrosys.cycle_engine.repository.UserRepository;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -23,6 +23,6 @@ public class MyUserDetailsService implements UserDetailsService {
             System.out.println("user Not Found");
             throw new UsernameNotFoundException("user Not found");
         }
-        return new UserPrincipal(user);
+        return new CustomUserDetails(user);
     }
 }

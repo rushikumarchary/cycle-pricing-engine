@@ -1,21 +1,34 @@
 import { useState, useEffect } from 'react';
+import PropTypes from 'prop-types';
 
-const TypingHeader = () => {
-  const text = 'Welcome to the Cycle Estimate Engine';
+const TypingHeader = ({ onComplete }) => {
+  
+  const mainText = `Welcome to the Cycle Pricing Engine`;
   const [displayedText, setDisplayedText] = useState('');
   const [index, setIndex] = useState(0);
 
   useEffect(() => {
-    if (index < text.length) {
+    if (index < mainText.length) {
       const timeout = setTimeout(() => {
-        setDisplayedText((prev) => prev + text[index]);
+        setDisplayedText((prev) => prev + mainText[index]);
         setIndex((prev) => prev + 1);
       }, 100);
       return () => clearTimeout(timeout);
+    } else {
+      // Typing is complete
+      onComplete?.();
     }
-  }, [index, text]);
+  }, [index, mainText, onComplete]);
 
-  return <h1 className="text-4xl font-extrabold mb-6">{displayedText}</h1>;
+  return (
+    <div className="text-center">
+      <h1 className="text-4xl font-extrabold mb-2">{displayedText}</h1>
+    </div>
+  );
+};
+
+TypingHeader.propTypes = {
+  onComplete: PropTypes.func
 };
 
 export default TypingHeader;

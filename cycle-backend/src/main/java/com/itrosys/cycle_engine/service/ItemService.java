@@ -292,6 +292,33 @@ public class ItemService {
 
 
     }
+    public ItemResponse updateItemDetails(int itemId, String validTo, BigDecimal price) {
+        Item item = itemRepository.findById(itemId)
+                .orElseThrow(() -> new ItemNotFound("Item with ID " + itemId + " not found"));
+
+        if (validTo != null) {
+            Date parsedDate = convertDate(validTo);
+            item.setValidTo(parsedDate);
+        }
+
+        if (price != null) {
+            item.setPrice(price);
+        }
+
+        item.setModifiedBy(getLoggedInUsername());
+        Item savedItem = itemRepository.save(item);
+
+        return ItemResponse.builder()
+                .message("Item details updated successfully.")
+                .itemId(savedItem.getItemId())
+                .itemName(savedItem.getItemName())
+                .itemType(savedItem.getItemType())
+                .validTo(savedItem.getValidTo())
+                .price(savedItem.getPrice())
+                .build();
+    }
+
+
 
 
     public ItemResponse updateItemPrice(int id, BigDecimal newPrice) {

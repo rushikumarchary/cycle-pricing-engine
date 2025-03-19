@@ -1,5 +1,6 @@
 package com.itrosys.cycle_engine.service;
 
+import com.itrosys.cycle_engine.entity.CustomUserDetails;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
@@ -22,25 +23,48 @@ public class JWTService {
 
 
 
-public String generateToken(UserDetails userDetails) {
-    Map<String, Object> claims = new HashMap<>();
+//public String generateToken(UserDetails userDetails) {
+//    Map<String, Object> claims = new HashMap<>();
+//
+//    // Extract the role from userDetails and add it to the claims
+//    if (!userDetails.getAuthorities().isEmpty()) {
+//        claims.put("role", userDetails.getAuthorities().iterator().next().getAuthority());
+//    }
+//
+//    return Jwts.builder()
+//            .claims()
+//            .add(claims)
+//            .subject(userDetails.getUsername())
+//            .issuedAt(new Date(System.currentTimeMillis()))
+//            .expiration(new Date(System.currentTimeMillis() + 30 * 60 * 60 * 1000))
+//            .and()
+//            .signWith(getkey())
+//            .compact();
+//}
 
-    // Extract the role from userDetails and add it to the claims
-    if (!userDetails.getAuthorities().isEmpty()) {
-        claims.put("role", userDetails.getAuthorities().iterator().next().getAuthority());
+    public String generateToken(UserDetails userDetails) {
+        Map<String, Object> claims = new HashMap<>();
+
+        // Extract role from userDetails and add it to claims
+        if (!userDetails.getAuthorities().isEmpty()) {
+            claims.put("role", userDetails.getAuthorities().iterator().next().getAuthority());
+        }
+
+        // Cast userDetails to your custom UserDetails implementation to access email
+        if (userDetails instanceof CustomUserDetails customUser) {
+            claims.put("email", customUser.getEmail());
+        }
+
+        return Jwts.builder()
+                .claims()
+                .add(claims)
+                .subject(userDetails.getUsername())
+                .issuedAt(new Date(System.currentTimeMillis()))
+                .expiration(new Date(System.currentTimeMillis() + 30 * 60 * 60 * 1000))
+                .and()
+                .signWith(getkey())
+                .compact();
     }
-
-    return Jwts.builder()
-            .claims()
-            .add(claims)
-            .subject(userDetails.getUsername())
-            .issuedAt(new Date(System.currentTimeMillis()))
-            .expiration(new Date(System.currentTimeMillis() + 30 * 60 * 60 * 1000))
-            .and()
-            .signWith(getkey())
-            .compact();
-}
-
 
     private SecretKey getkey(){
         byte[] keyBytes = Decoders.BASE64.decode(secretKey);

@@ -3,6 +3,7 @@ import axios from "axios";
 import Swal from "sweetalert2";
 import PropTypes from 'prop-types';
 import { getAuthHeader } from '../../utils/auth';
+import DomainName from '../../utils/config';
 
 const UpdatePrice = ({ isOpen, onClose, itemId, currentPrice, onUpdateSuccess }) => {
   const [price, setPrice] = useState(currentPrice);
@@ -16,7 +17,7 @@ const UpdatePrice = ({ isOpen, onClose, itemId, currentPrice, onUpdateSuccess })
       });
 
       const response = await axios.patch(
-        `http://localhost:8080/item/update/price?${params.toString()}`,
+        `${DomainName}/item/update/price?${params.toString()}`,
         null,
         getAuthHeader()
       );

@@ -1,65 +1,68 @@
-import { Link, useNavigate, useLocation } from 'react-router-dom'
-import { useState } from 'react';
-import axios from '../../utils/axiosConfig';
-import Swal from 'sweetalert2';
-import { AiOutlineEye, AiOutlineEyeInvisible } from 'react-icons/ai';
-import { FaCalculator, FaBicycle } from 'react-icons/fa';
+import { Link, useNavigate, useLocation } from "react-router-dom";
+import { useState } from "react";
+import axios from "../../utils/axiosConfig";
+import Swal from "sweetalert2";
+import { AiOutlineEye, AiOutlineEyeInvisible } from "react-icons/ai";
+import { FaCalculator, FaBicycle } from "react-icons/fa";
 
-import { useAuth } from '../../hooks/useAuth';
+import { useAuth } from "../../hooks/useAuth";
+import DomainName from "../../utils/config";
 
 function SignIn() {
+  const { login } = useAuth();
   const [formData, setFormData] = useState({
-    username: '',
-    password: ''
+    username: "",
+    password: "",
   });
   const [errors, setErrors] = useState({
-    username: '',
-    password: ''
+    username: "",
+    password: "",
   });
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  const { login } = useAuth();
 
   const searchParams = new URLSearchParams(location.search);
-  const redirectTo = searchParams.get('redirectTo') || '/';
+  const redirectTo = searchParams.get("redirectTo") || "/";
 
   const validateUsername = (username) => {
-    if (!username) return 'Username is required';
-    if (username.includes('@')) return 'Username cannot contain @';
-    if (username !== username.toLowerCase()) return 'Username must be lowercase';
-    if (!/^[a-z0-9_-]+$/.test(username)) return 'Username can only contain lowercase letters, numbers, underscores, and hyphens';
-    return '';
+    if (!username) return "Username is required";
+    if (username.includes("@")) return "Username cannot contain @";
+    if (username !== username.toLowerCase())
+      return "Username must be lowercase";
+    if (!/^[a-z0-9_-]+$/.test(username))
+      return "Username can only contain lowercase letters, numbers, underscores, and hyphens";
+    return "";
   };
 
   const validatePassword = (password) => {
-    if (!password) return 'Password is required';
-    if (password.length < 8) return 'Password must be at least 8 characters';
-    return '';
+    if (!password) return "Password is required";
+    if (password.length < 8) return "Password must be at least 8 characters";
+    return "";
   };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
 
     // Clear error when user starts typing
-    setErrors(prev => ({
+    setErrors((prev) => ({
       ...prev,
-      [name]: ''
+      [name]: "",
     }));
   };
 
   const validateForm = () => {
     const newErrors = {
       username: validateUsername(formData.username),
-      password: validatePassword(formData.password)
+      password: validatePassword(formData.password),
     };
 
     setErrors(newErrors);
-    return !Object.values(newErrors).some(error => error !== '');
+    return !Object.values(newErrors).some((error) => error !== "");
   };
 
   const handleSubmit = async (e) => {
@@ -72,43 +75,48 @@ function SignIn() {
     // Convert username to lowercase before submitting
     const submissionData = {
       ...formData,
-      username: formData.username.toLowerCase()
+      username: formData.username.toLowerCase(),
     };
 
     Swal.fire({
-      title: 'Signing In...',
-      html: 'Please wait...',
+      title: "Signing In...",
+      html: "Please wait...",
       allowOutsideClick: false,
       didOpen: () => {
         Swal.showLoading();
-      }
+      },
     });
 
     try {
-      const response = await axios.post('http://localhost:8080/auth/signIn', submissionData);
+      const response = await axios.post(
+        `${DomainName}/auth/signIn`,
+        submissionData
+      );
       if (response.data) {
         login(response.data);
         await Swal.fire({
-          icon: 'success',
-          title: 'Login Successful!',
-          text: 'Welcome back!',
+          icon: "success",
+          title: "Login Successful!",
+          text: "Welcome back!",
           timer: 1500,
-          showConfirmButton: false
+          showConfirmButton: false,
         });
         navigate(redirectTo);
       } else {
-        throw new Error('No token received from server');
+        throw new Error("No token received from server");
       }
     } catch (error) {
-      console.error('Login error:', error);
+      console.error("Login error:", error);
       Swal.fire({
-        icon: 'error',
-        title: 'Login Failed',
-        text: error.response?.data?.message || 'Invalid credentials. Please try again.',
+        icon: "error",
+        title: "Login Failed",
+        text:
+          error.response?.data?.message ||
+          "Invalid credentials. Please try again.",
       });
       setErrors({
-        username: 'Invalid username or password',
-        password: 'Invalid username or password'
+        username: "Invalid username or password",
+        password: "Invalid username or password",
       });
     }
   };
@@ -123,8 +131,13 @@ function SignIn() {
             <FaBicycle className="text-6xl mr-4" />
             <FaCalculator className="text-6xl" />
           </div>
-          <h1 className="text-4xl font-bold mb-6">Welcome to Cycle Pricing Engine</h1>
-          <p className="text-xl mb-8">Calculate precise and competitive prices for your cycles with our advanced pricing engine.</p>
+          <h1 className="text-4xl font-bold mb-6">
+            Welcome to Cycle Pricing Engine
+          </h1>
+          <p className="text-xl mb-8">
+            Calculate precise and competitive prices for your cycles with our
+            advanced pricing engine.
+          </p>
           <div className="space-y-4 text-lg">
             <div className="flex items-center">
               <span className="mr-2">✓</span>
@@ -148,12 +161,17 @@ function SignIn() {
         <div className="w-full max-w-md space-y-8 bg-white p-10 rounded-xl shadow-lg">
           <div className="text-center">
             <h2 className="text-3xl font-bold text-gray-900 mb-2">Sign In</h2>
-            <p className="text-gray-600">Welcome back! Please enter your details</p>
+            <p className="text-gray-600">
+              Welcome back! Please enter your details
+            </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="username"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Username
               </label>
               <input
@@ -163,7 +181,9 @@ function SignIn() {
                 required
                 value={formData.username}
                 onChange={handleChange}
-                className={`w-full px-4 py-3 rounded-lg border ${errors.username ? 'border-red-500' : 'border-gray-300'} focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200`}
+                className={`w-full px-4 py-3 rounded-lg border ${
+                  errors.username ? "border-red-500" : "border-gray-300"
+                } focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200`}
                 placeholder="Enter your username"
               />
               {/* {errors.username && (
@@ -172,7 +192,10 @@ function SignIn() {
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Password
               </label>
               <div className="relative">
@@ -183,7 +206,9 @@ function SignIn() {
                   required
                   value={formData.password}
                   onChange={handleChange}
-                  className={`w-full px-4 py-3 rounded-lg border ${errors.password ? 'border-red-500' : 'border-gray-300'} focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200 pr-10`}
+                  className={`w-full px-4 py-3 rounded-lg border ${
+                    errors.password ? "border-red-500" : "border-gray-300"
+                  } focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200 pr-10`}
                   placeholder="Enter your password"
                 />
                 <button
@@ -191,7 +216,11 @@ function SignIn() {
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
                 >
-                  {showPassword ? <AiOutlineEyeInvisible size={20} /> : <AiOutlineEye size={20} />}
+                  {showPassword ? (
+                    <AiOutlineEyeInvisible size={20} />
+                  ) : (
+                    <AiOutlineEye size={20} />
+                  )}
                 </button>
               </div>
               {errors.password && (
@@ -210,7 +239,7 @@ function SignIn() {
           <div className="text-center">
             <p className="text-gray-600">
               Don&apos;t have an account?{" "}
-              <Link 
+              <Link
                 to={`/signUp?redirectTo=${encodeURIComponent(redirectTo)}`}
                 className="text-blue-600 hover:text-blue-800 font-semibold hover:underline"
               >

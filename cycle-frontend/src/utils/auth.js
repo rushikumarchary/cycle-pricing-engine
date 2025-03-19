@@ -109,13 +109,13 @@ export const isAuthenticated = () => {
     const payload = JSON.parse(atob(token.split('.')[1]));
     const currentTime = Math.floor(Date.now() / 1000); // Current time in seconds
 
-    // Debug info
-    const debugInfo = {
-      currentTime,
-      expirationTime: payload.exp,
-      timeRemaining: (payload.exp - currentTime) / 3600, // hours remaining
-      isValid: payload.exp > currentTime
-    };
+    // // Debug info
+    // const debugInfo = {
+    //   currentTime,
+    //   expirationTime: payload.exp,
+    //   timeRemaining: (payload.exp - currentTime) / 3600, // hours remaining
+    //   isValid: payload.exp > currentTime
+    // };
     // console.log('Token Debug Info:', debugInfo);
 
     // Token is valid if it has not expired
@@ -160,8 +160,8 @@ export const debugToken = () => {
   }
 
   try {
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    const currentTime = Math.floor(Date.now() / 1000);
+     JSON.parse(atob(token.split('.')[1]));
+    Math.floor(Date.now() / 1000);
     // console.log('Token Payload:', payload);
     // console.log('Expiration:', new Date(payload.exp * 1000).toLocaleString());
     // console.log('Current Time:', new Date().toLocaleString());
@@ -223,6 +223,21 @@ export const getUserName = () => {
     return payload.name || payload.sub || null;
   } catch (error) {
     console.error('Error extracting name from token:', error);
+    return null;
+  }
+};
+
+// Add this new function to get user email from token
+export const getUserEmail = () => {
+  const token = getToken();
+  if (!token) return null;
+
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    // Assuming the email is stored in the token payload as 'email' or 'sub'
+    return payload.email || null;
+  } catch (error) {
+    console.error('Error extracting email from token:', error);
     return null;
   }
 };

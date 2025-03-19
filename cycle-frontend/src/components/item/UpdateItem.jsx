@@ -1,12 +1,31 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import axios from "axios";
 import Swal from "sweetalert2";
 import PropTypes from 'prop-types';
 import { getAuthHeader } from '../../utils/auth';
 import DomainName from '../../utils/config';
 
-const UpdateDateTime = ({ isOpen, onClose, itemId, currentValidTo, onUpdateSuccess }) => {
-  const [validTo, setValidTo] = useState(currentValidTo ? currentValidTo.replace(' ', 'T') : '');
+const UpdateItem = ({ isOpen, onClose, itemId, currentValidTo, currentPrice, onUpdateSuccess }) => {
+  const [validTo, setValidTo] = useState('');
+  const [price, setPrice] = useState('');
+
+  // Update state when modal opens or props change
+  useEffect(() => {
+    if (currentValidTo && currentPrice) {
+      // Convert the date string to the format required by datetime-local input
+      const date = new Date(currentValidTo);
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      const hours = String(date.getHours()).padStart(2, "0");
+      const minutes = String(date.getMinutes()).padStart(2, "0");
+      const formattedDate = `${year}-${month}-${day}T${hours}:${minutes}`;
+      
+      // Set both date and price
+      setValidTo(formattedDate);
+      setPrice(currentPrice);
+    }
+  }, [currentValidTo, currentPrice, isOpen]);
 
   // Function to format date to 'yyyy-MM-dd HH:mm:ss'
   const formatDateTime = (dateTimeString) => {
@@ -16,7 +35,7 @@ const UpdateDateTime = ({ isOpen, onClose, itemId, currentValidTo, onUpdateSucce
     const day = String(date.getDate()).padStart(2, "0");
     const hours = String(date.getHours()).padStart(2, "0");
     const minutes = String(date.getMinutes()).padStart(2, "0");
-    const seconds = "00"; // Default seconds to 00
+    const seconds = "00";
 
     return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
   };
@@ -25,19 +44,20 @@ const UpdateDateTime = ({ isOpen, onClose, itemId, currentValidTo, onUpdateSucce
     e.preventDefault();
     try {
       const formattedDate = formatDateTime(validTo);
-      console.log('Sending data:', { itemId, validTo: formattedDate }); // Debug log
+      console.log('Sending data:', { itemId, validTo: formattedDate, price });
       
       const params = new URLSearchParams({
         itemId: itemId,
-        validTo: formattedDate
+        validTo: formattedDate,
+        price: price
       });
 
       const response = await axios.patch(
-        `${DomainName}/item/update/date-time?${params.toString()}`,
+        `${DomainName}/item/update/date-and-price?${params.toString()}`,
         null,
         getAuthHeader()
       );
-      console.log('Response:', response.data); // Debug log
+      console.log('Response:', response.data);
 
       onClose();
       onUpdateSuccess();
@@ -45,14 +65,14 @@ const UpdateDateTime = ({ isOpen, onClose, itemId, currentValidTo, onUpdateSucce
       Swal.fire({
         icon: "success",
         title: "Success",
-        text: "Date updated successfully",
+        text: "Item updated successfully",
       });
     } catch (error) {
-      console.error('Full error:', error); // Debug log
+      console.error('Full error:', error);
       Swal.fire({
         icon: "error",
         title: "Error",
-        text: error.response?.data || "Failed to update date",
+        text: error.response?.data || "Failed to update item",
       });
     }
   };
@@ -62,7 +82,7 @@ const UpdateDateTime = ({ isOpen, onClose, itemId, currentValidTo, onUpdateSucce
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
       <div className="bg-white p-6 rounded-lg w-96">
-        <h2 className="text-xl font-bold mb-4">Update Valid To Date</h2>
+        <h2 className="text-xl font-bold mb-4">Update Item Details</h2>
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
             <label className="block text-gray-700 text-sm font-bold mb-2">
@@ -72,11 +92,23 @@ const UpdateDateTime = ({ isOpen, onClose, itemId, currentValidTo, onUpdateSucce
               type="datetime-local"
               className="w-full p-2 border rounded"
               value={validTo}
-              onChange={(e) => {
-                const formattedDate = formatDateTime(e.target.value);
-                setValidTo(formattedDate);
-              }}
+              onChange={(e) => setValidTo(e.target.value)}
               min={new Date().toISOString().slice(0, 16)}
+              required
+            />
+          </div>
+
+          <div className="mb-4">
+            <label className="block text-gray-700 text-sm font-bold mb-2">
+              Price
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              className="w-full p-2 border rounded"
+              value={price}
+              onChange={(e) => setPrice(parseFloat(e.target.value))}
+              min="0"
               required
             />
           </div>
@@ -93,7 +125,7 @@ const UpdateDateTime = ({ isOpen, onClose, itemId, currentValidTo, onUpdateSucce
               type="submit"
               className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
             >
-              Update Date
+              Update Item
             </button>
           </div>
         </form>
@@ -102,12 +134,13 @@ const UpdateDateTime = ({ isOpen, onClose, itemId, currentValidTo, onUpdateSucce
   );
 };
 
-UpdateDateTime.propTypes = {
+UpdateItem.propTypes = {
   isOpen: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,
   itemId: PropTypes.number.isRequired,
   currentValidTo: PropTypes.string.isRequired,
+  currentPrice: PropTypes.number.isRequired,
   onUpdateSuccess: PropTypes.func.isRequired
 };
 
-export default UpdateDateTime; 
+export default UpdateItem; 

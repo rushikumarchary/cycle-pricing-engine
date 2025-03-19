@@ -30,6 +30,9 @@ public class SecurityConfig {
     private final MyUserDetailsService myUserDetailsService;
     private final JwtFilter jwtFilter;
 
+//    @Value("${cors.allowedOrigins}")
+//    private String allowedOrigins;
+
     public SecurityConfig(MyUserDetailsService myUserDetailsService, JwtFilter jwtFilter) {
         this.myUserDetailsService = myUserDetailsService;
         this.jwtFilter = jwtFilter;
@@ -55,9 +58,9 @@ public class SecurityConfig {
                 .cors(withDefaults())
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(request -> request
-                        .requestMatchers("/auth/signUp", "/auth/signIn").permitAll()
+                        .requestMatchers("/auth/signUp", "/auth/signIn", "/").permitAll()
                         .requestMatchers("/brand/**", "/item/**")
-                        .hasAnyAuthority("ADMIN","MANAGER","EMPLOYEE")  // Restrict these endpoints
+                        .hasAnyAuthority("ADMIN", "MANAGER", "EMPLOYEE")  // Restrict these endpoints
                         .anyRequest().authenticated())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
@@ -77,11 +80,12 @@ public class SecurityConfig {
         provider.setPasswordEncoder(passwordEncoder());
         return provider;
     }
+
+
     @Bean
     public CorsFilter corsFilter() {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOrigins(List.of("http://localhost:5173"));
-//        config.setAllowedOrigins(List.of("http://192.168.229.120:5173"));// Allow frontend access
         config.setAllowedMethods(List.of("GET", "POST", "PUT","PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
@@ -90,6 +94,19 @@ public class SecurityConfig {
         source.registerCorsConfiguration("/**", config);
         return new CorsFilter(source);
     }
+
+//    @Bean
+//    public CorsFilter corsFilter() {
+//        CorsConfiguration config = new CorsConfiguration();
+//        config.setAllowedOrigins(Arrays.asList(allowedOrigins.split(","))); // Convert CSV string to List
+//        config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+//        config.setAllowedHeaders(List.of("*"));
+//        config.setAllowCredentials(true);
+//
+//        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+//        source.registerCorsConfiguration("/**", config);
+//        return new CorsFilter(source);
+//    }
 
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {

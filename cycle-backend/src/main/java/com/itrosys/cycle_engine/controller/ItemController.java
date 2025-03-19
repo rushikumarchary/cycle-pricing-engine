@@ -40,14 +40,23 @@ public class ItemController {
 
     @Operation(summary = "Get Items by Type", description = "Fetch all items of a specific type")
     @GetMapping("/itemType")
-    public ResponseEntity<List<ItemResponse>> getItemsByType(@RequestParam String type , @RequestParam int brandId) {
-        return ResponseEntity.ok(itemService.getItemsByType(type,brandId));
+    public ResponseEntity<List<ItemResponse>> getItemsByType(@RequestParam String type, @RequestParam int brandId) {
+        return ResponseEntity.ok(itemService.getItemsByType(type, brandId));
     }
 
     @Operation(summary = "Add a New Item", description = "Create a new item in the system")
     @PostMapping("/add")
     public ResponseEntity<ItemResponse> addItem(@RequestBody ItemRequest itemRequest) {
         return new ResponseEntity<>(itemService.addItem(itemRequest), HttpStatus.CREATED);
+    }
+
+    @Operation(summary = "Update Item Price and Valid Date",
+            description = "Update the price and valid date of an item by its ID")
+    @PatchMapping("/update/date-and-price")
+    public ResponseEntity<ItemResponse> updateItemDetails(@RequestParam int itemId,
+                                                          @RequestParam String validTo,
+                                                          @RequestParam BigDecimal price) {
+        return new ResponseEntity<>(itemService.updateItemDetails(itemId, validTo, price), HttpStatus.OK);
     }
 
 
@@ -61,7 +70,7 @@ public class ItemController {
             description = "Update the valid date of an item by its ID",
             security = @SecurityRequirement(name = "basicAuth"))
     @PatchMapping("/update/date-time")
-    public ResponseEntity<ItemResponse> updateItemValidDateTime( @RequestParam int itemId, @RequestParam String validTo) {
+    public ResponseEntity<ItemResponse> updateItemValidDateTime(@RequestParam int itemId, @RequestParam String validTo) {
         return new ResponseEntity<>(itemService.updateValidDate(validTo, itemId), HttpStatus.CREATED);
     }
 
@@ -78,7 +87,7 @@ public class ItemController {
     @DeleteMapping("/delete/{id}")
     public ResponseEntity<Item> deleteItemById(@PathVariable int id) {
 
-        return new ResponseEntity<>( itemService.deleteById(id),HttpStatus.OK);
+        return new ResponseEntity<>(itemService.deleteById(id), HttpStatus.OK);
     }
 
 }

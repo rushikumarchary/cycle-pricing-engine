@@ -4,10 +4,7 @@ import com.itrosys.cycle_engine.entity.Users;
 import com.itrosys.cycle_engine.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/auth")
@@ -18,6 +15,7 @@ private  UserService userService;
     public UserController(UserService userService){
         this.userService= userService;
     }
+
     @Operation(summary = "Sing up as user", description = "with this user can sing up")
     @PostMapping("/signUp")
     public Users register(@RequestBody Users user){

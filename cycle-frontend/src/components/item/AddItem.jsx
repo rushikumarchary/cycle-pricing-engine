@@ -2,7 +2,8 @@
 import { useState } from "react";
 import axios from "axios";
 import Swal from "sweetalert2";
-import { getAuthHeader, isAuthenticated } from '../../utils/auth';
+import { getAuthHeader, handleApiError, isAuthenticated } from '../../utils/auth';
+import DomainName from "../../utils/config";
 
 const AddItem = ({ isOpen, onClose, selectedBrand, onItemAdded }) => {
   const [newItem, setNewItem] = useState({
@@ -49,7 +50,7 @@ const AddItem = ({ isOpen, onClose, selectedBrand, onItemAdded }) => {
       console.log('Sending data:', itemData); // Debug log
   
       await axios.post(
-        "http://localhost:8080/item/add",
+        `${DomainName}/item/add`,
         itemData,
         getAuthHeader()
       );
