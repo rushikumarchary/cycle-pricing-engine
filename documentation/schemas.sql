@@ -178,13 +178,88 @@ INSERT INTO items (item_name, item_type, price, valid_to, brand_id, is_active, m
          ('8 Gears', 'Chain Assembly', 415.00, '2025-4-13 23:59:59', 5,'Y', 'Admin');
 SELECT * FROM items;
 SELECT * FROM brands;
+CREATE TABLE roles (
+    role_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    role_name VARCHAR(255) NOT NULL UNIQUE
+);
+CREATE TABLE users (
+    user_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    username VARCHAR(255) NOT NULL UNIQUE,
+    role_id BIGINT NOT NULL,
+    FOREIGN KEY (role_id) REFERENCES roles(role_id)
+);
+
+CREATE TABLE addresses (
+    address_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    address_type ENUM('APARTMENT', 'BUSINESS', 'HOUSE', 'OTHER') NOT NULL,
+    apartment VARCHAR(50),
+    area_street VARCHAR(100) NOT NULL,
+    city VARCHAR(25) NOT NULL,
+    delivery_instructions TEXT,
+    flat_house_no VARCHAR(255) NOT NULL,
+    full_name VARCHAR(255) NOT NULL,
+    landmark VARCHAR(255),
+    mobile_number VARCHAR(15) NOT NULL,
+    pincode VARCHAR(10) NOT NULL,
+    state VARCHAR(255) NOT NULL,
+    user_id BIGINT NOT NULL,
+    CONSTRAINT fk_user FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+);
+CREATE TABLE cart (
+    cart_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    quantity INT NOT NULL,
+    thumbnail VARCHAR(255) NOT NULL,
+    brand_id INT NOT NULL,
+    user_id BIGINT NOT NULL,
+    CONSTRAINT fk_cart_brand FOREIGN KEY (brand_id) REFERENCES brands(brand_id) ON DELETE CASCADE,
+    CONSTRAINT fk_cart_user FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+);
+
+CREATE TABLE cart_item (
+    cart_item_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    cart_id BIGINT NOT NULL,
+    item_id INT NOT NULL,
+    CONSTRAINT fk_cart_item_cart FOREIGN KEY (cart_id) REFERENCES cart(cart_id) ON DELETE CASCADE,
+    CONSTRAINT fk_cart_item_item FOREIGN KEY (item_id) REFERENCES items(item_id) ON DELETE CASCADE
+);
+CREATE TABLE order_details (
+    order_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    order_date DATETIME(6) NOT NULL,
+    status ENUM('Cancel', 'Confirmed', 'Processing', 'Shipped') NOT NULL,
+    total_amount DOUBLE NOT NULL,
+    address_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    CONSTRAINT fk_order_address FOREIGN KEY (address_id) REFERENCES addresses(address_id) ON DELETE CASCADE,
+    CONSTRAINT fk_order_user FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+);
+CREATE TABLE order_item (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    brakes VARCHAR(255) NOT NULL,
+    brand VARCHAR(255) NOT NULL,
+    chain_assembly VARCHAR(255) NOT NULL,
+    frame VARCHAR(255) NOT NULL,
+    handlebar VARCHAR(255) NOT NULL,
+    quantity INT NOT NULL,
+    seating VARCHAR(255) NOT NULL,
+    total_price DOUBLE NOT NULL,
+    tyre VARCHAR(255) NOT NULL,
+    unit_price DOUBLE NOT NULL,
+    wheel VARCHAR(255) NOT NULL,
+    order_id BIGINT NOT NULL,
+    CONSTRAINT fk_order_item_order FOREIGN KEY (order_id) REFERENCES order_details(order_id) ON DELETE CASCADE
+);
+CREATE TABLE payment_orders (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    amount INT NOT NULL,
+    created_at DATETIME(6) NOT NULL,
+    currency VARCHAR(255),
+    payment_id VARCHAR(255),
+    razorpay_order_id VARCHAR(255),
+    signature VARCHAR(255),
+    status VARCHAR(255)
+);
 
 
-UPDATE items set is_active = 'n' where item_id= 2;
 
-
-SELECT * 
-FROM items i 
-JOIN brands b ON i.brand_id = b.brand_id
-WHERE b.brand_name = 'Hero' 
-AND i.item_name IN ('Tubeless', 'Spokes', 'Steel', 'Upright', 'V-Brake', '4 Gears', 'Flat');

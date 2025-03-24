@@ -10,9 +10,5 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional // Rollback DB changes after each test
 class CycleEngineApplicationTests {
 
-	@Test
-	void contextLoads() {
-		System.out.println("CycleEnginApplication Started");
-	}
 
 }

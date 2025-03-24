@@ -1,18 +1,13 @@
-/* eslint-disable no-unused-vars */
 import { useState, useEffect, useCallback } from "react";
-import axios from "axios";
 import Swal from "sweetalert2";
+// eslint-disable-next-line no-unused-vars
 import { FaEdit, FaTrash, FaPlus, FaSearch, FaList } from "react-icons/fa";
 import AddItem from "../../components/item/AddItem";
 import UpdateItem from "../../components/item/UpdateItem";
 import { useLocation, useNavigate } from "react-router-dom";
-import {
-  hasManagementAccess,
-  getAuthHeader,
-  handleApiError,
-  isAuthenticated,
-} from "../../utils/auth";
-import DomainName from "../../utils/config";
+import { hasManagementAccess, isAuthenticated } from "../../utils/auth";
+import { itemAPI, brandAPI } from "../../utils/api";
+import toast from "react-hot-toast";
 
 function Items() {
   const location = useLocation();
@@ -60,19 +55,13 @@ function Items() {
   const handleApiError = useCallback(
     (error) => {
       if (error.response?.status === 403) {
-        Swal.fire({
-          icon: "error",
-          title: "Session Expired",
-          text: "Your session has expired. Please login again.",
-        }).then(() => {
-          navigate("/signIn", { state: { redirectTo: location.pathname } });
-        });
+        toast
+          .error("Your session has expired. Please login again.")
+          .then(() => {
+            navigate("/signIn", { state: { redirectTo: location.pathname } });
+          });
       } else {
-        Swal.fire({
-          icon: "error",
-          title: "Error",
-          text: error.response?.data || "An error occurred",
-        });
+        toast.error(error.response?.data || "An error occurred")
       }
     },
     [navigate, location.pathname]
@@ -86,11 +75,8 @@ function Items() {
           return;
         }
 
-        const response = await axios.get(
-          `${DomainName}/item/brand/${brandName}`,
-          getAuthHeader()
-        );
-        setItems(response.data);
+        const response = await itemAPI.getItemsByBrandName(brandName);
+        setItems(response);
         setCurrentPage(1);
       } catch (error) {
         setItems([]);
@@ -104,11 +90,8 @@ function Items() {
   useEffect(() => {
     const fetchBrands = async () => {
       try {
-        const response = await axios.get(
-          `${DomainName}/brand/brands`,
-          getAuthHeader()
-        );
-        setBrands(response.data);
+        const response = await brandAPI.getAllBrands();
+        setBrands(response);
 
         // If we have a selected brand from navigation, use that
         if (location.state?.selectedBrand) {
@@ -116,11 +99,7 @@ function Items() {
           fetchItemsForBrand(location.state.selectedBrand);
         }
       } catch (error) {
-        Swal.fire({
-          icon: "error",
-          title: "Error",
-          text: error.response?.data || "Failed to fetch brands",
-        });
+        toast.error(error.response?.data || "Failed to fetch brands")
       }
     };
 
@@ -129,6 +108,8 @@ function Items() {
         icon: "error",
         title: "Access Denied",
         text: "Only Administrators and Managers can manage items.",
+        showConfirmButton:false,
+        timer:1500,
       }).then(() => {
         navigate("/");
       });
@@ -150,7 +131,6 @@ function Items() {
   };
 
   // Pagination logic
-
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentItems =
@@ -195,29 +175,40 @@ function Items() {
     }).then(async (result) => {
       if (result.isConfirmed) {
         try {
-          await axios.delete(
-            `${DomainName}/item/delete/${itemId}`,
-            getAuthHeader()
-          );
+          await itemAPI.deleteItem(itemId);
 
           // Update items list after deletion
           if (selectedBrand) {
             await fetchItemsForBrand(selectedBrand);
           }
-
-          Swal.fire({
-            icon: "success",
-            title: "Deleted!",
-            text: "Item has been deleted.",
-          });
+          toast.success("Item has been deleted.");
         } catch (error) {
           console.log(error);
           if (error.response?.status === 406) {
             Swal.fire({
-              icon: "error",
-              title: "Error",
-              text: error.response?.data || "An error occurred",
-            });
+              title: "Are you sure?",
+              text: error.response.data,
+              icon: "warning",
+              showCancelButton: true,
+              confirmButtonColor: "#3085d6",
+              cancelButtonColor: "#d33",
+              confirmButtonText: "Yes, delete it!",
+            }).then(async (result) => {
+              if (result.isConfirmed) {
+                try {
+                  await itemAPI.deleteConfirmItem(itemId);
+                  if (selectedBrand) {
+                    await fetchItemsForBrand(selectedBrand);
+                  }
+                  toast.success("Item has been deleted.");
+                } catch (error) {
+                  console.log(error);
+                  
+                }
+              }
+
+
+            })
           } else {
             handleApiError(error);
           }
@@ -226,37 +217,40 @@ function Items() {
     });
   };
 
-  const handleItemAdded = async () => {
-    try {
-      // Refresh items list after adding new item
-      const response = await axios.get(
-        `${DomainName}/item/brand/${selectedBrand}`,
-        getAuthHeader()
-      );
-      setItems(response.data);
-    } catch (error) {
-      Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: "Failed to refresh items list",
-      });
-    }
-  };
+  // const handleItemAdded = async () => {
+  //   try {
+  //     // Refresh items list after adding new item
+  //     const response = await itemAPI.getItemsByBrandName(selectedBrand);
+  //     setItems(response);
+  //   } catch (error) {
+  //     Swal.fire({
+  //       icon: "error",
+  //       title: "Error",
+  //       text: "Failed to refresh items list",
+  //     });
+  //   }
+  // };
 
   return (
     <div className="container mx-auto p-4">
       <div className="mb-6 flex justify-center">
         <div className="w-2/3 flex flex-col justify-center items-center">
           <label className="block text-gray-200 text-xl font-bold mb-4 text-center">
-            {selectedBrand
-              ? <p className="text-black text-xl font-bold text-center">Managing Items for <span className="text-[#352496]">{selectedBrand}</span></p>
-              : <p className="text-black text-xl font-bold text-center">Select a Brand to View and Manage Items</p>
-              }
+            {selectedBrand ? (
+              <p className="text-black text-xl font-bold text-center">
+                Managing Items for{" "}
+                <span className="text-[#352496]">{selectedBrand}</span>
+              </p>
+            ) : (
+              <p className="text-black text-xl font-bold text-center">
+                Select a Brand to View and Manage Items
+              </p>
+            )}
           </label>
           <div className="flex items-center gap-4">
             <select
               className="w-64 p-2 border rounded"
-              value={selectedBrand} 
+              value={selectedBrand}
               onChange={handleBrandChange}
             >
               <option value="" disabled>
@@ -304,7 +298,7 @@ function Items() {
                   </button>
                 )}
               </span>
-              <span >
+              <span>
                 <button
                   onClick={() => setIsAddModalOpen(true)}
                   className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-700 flex items-center"
@@ -315,18 +309,18 @@ function Items() {
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center">
-            <div className="mb-5">
-            <button
-              onClick={() => setIsAddModalOpen(true)}
-              className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-700 flex items-center"
-            >
-              <FaPlus className="mr-2" /> Add Item
-            </button>
-          </div>
-            <div className="text-center text-black mt-8">
-              <p>No items found for this brand.</p>
-              <p>Click Add Item to add your first item.</p>
-            </div>
+              <div className="mb-5">
+                <button
+                  onClick={() => setIsAddModalOpen(true)}
+                  className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-700 flex items-center"
+                >
+                  <FaPlus className="mr-2" /> Add Item
+                </button>
+              </div>
+              <div className="text-center text-black mt-8">
+                <p>No items found for this brand.</p>
+                <p>Click Add Item to add your first item.</p>
+              </div>
             </div>
           )}
 
@@ -349,7 +343,7 @@ function Items() {
               <table className="min-w-full bg-white rounded-lg shadow-[2px_4px_12px_rgba(75,75,112,1)]">
                 <thead className="bg-gray-100">
                   <tr>
-                    <th className="px-6 py-3 text-left">Item Name</th>  
+                    <th className="px-6 py-3 text-left">Item Name</th>
                     <th className="px-6 py-3 text-left">Type</th>
                     <th className="px-6 py-3 text-left">Price</th>
                     <th className="px-6 py-3 text-left">Valid To</th>
@@ -364,9 +358,7 @@ function Items() {
                       <td className="px-6 py-4">
                         {Number(item.price).toFixed(2)}
                       </td>
-                      <td className="px-6 py-4">
-                        {item.validTo}
-                      </td>
+                      <td className="px-6 py-4">{item.validTo}</td>
                       <td className="px-6 py-4">
                         <div className="flex gap-2">
                           <button
@@ -451,7 +443,6 @@ function Items() {
         onClose={() => setIsAddModalOpen(false)}
         selectedBrand={selectedBrand}
         onItemAdded={() => fetchItemsForBrand(selectedBrand)}
-        authConfig={getAuthHeader()}
       />
 
       {selectedItem && (

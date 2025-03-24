@@ -12,7 +12,7 @@ const TypingHeader = ({ onComplete }) => {
       const timeout = setTimeout(() => {
         setDisplayedText((prev) => prev + mainText[index]);
         setIndex((prev) => prev + 1);
-      }, 100);
+      }, 30);
       return () => clearTimeout(timeout);
     } else {
       // Typing is complete

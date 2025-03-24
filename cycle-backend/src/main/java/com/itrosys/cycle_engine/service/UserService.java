@@ -1,7 +1,7 @@
 package com.itrosys.cycle_engine.service;
 
 import com.itrosys.cycle_engine.entity.Role;
-import com.itrosys.cycle_engine.entity.Users;
+import com.itrosys.cycle_engine.entity.User;
 import com.itrosys.cycle_engine.exception.BadCredentials;
 import com.itrosys.cycle_engine.exception.EmailAlreadyExists;
 import com.itrosys.cycle_engine.exception.UsernameAlreadyExists;
@@ -15,6 +15,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -36,13 +37,13 @@ public class UserService {
         this.roleRepository=roleRepository;
     }
 
-//    public Users register(Users user) {
+//    public User register(User user) {
 //
 //        user.setPassword(passwordEncoder.encode(user.getPassword()));
 //        return userRepository.save(user);
 //    }
-public Users register(Users user) {
-    List<Users> existingUsers = userRepository.findByUsernameOrEmail(user.getUsername(), user.getEmail());
+public User register(User user) {
+    List<User> existingUsers = userRepository.findByUsernameOrEmail(user.getUsername(), user.getEmail());
 
     if (!existingUsers.isEmpty()) {
         boolean usernameExists = existingUsers.stream().anyMatch(u -> u.getUsername().equals(user.getUsername()));
@@ -69,7 +70,7 @@ public Users register(Users user) {
 
 
 
-    public String verify(Users user) {
+    public String verify(User user) {
         try {
             Authentication authentication = authManager.authenticate(
                     new UsernamePasswordAuthenticationToken(user.getUsername(), user.getPassword())
@@ -82,8 +83,29 @@ public Users register(Users user) {
         }
     }
 
+    @Transactional
+    public void createAdminUserIfNotExist() {
+        Role adminRole = roleRepository.findByName("ADMIN");
 
-//    public String verify(Users user) {
+        if (adminRole != null) {
+            User adminUser = userRepository.findByUsername("ADMIN");
+
+            if (adminUser == null) {
+                User admin = new User();
+                admin.setUsername("admin");
+                admin.setPassword(passwordEncoder.encode("admin@1234"));
+                admin.setEmail("admin@itrosys.com");
+                admin.setRole(adminRole);
+
+                userRepository.save(admin);
+            }
+        } else {
+            System.out.println("ADMIN role not found. Please ensure roles are created.");
+        }
+    }
+
+
+//    public String verify(User user) {
 //        try {
 //            Authentication authentication = authManager.authenticate(
 //                    new UsernamePasswordAuthenticationToken(user.getUsername(), user.getPassword())

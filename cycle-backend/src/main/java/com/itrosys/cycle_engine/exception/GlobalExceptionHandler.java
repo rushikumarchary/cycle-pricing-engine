@@ -13,15 +13,15 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(ExpiredJwtException.class)
     public ResponseEntity<String> handleExpireToken(ExpiredJwtException ex){
-        return new ResponseEntity<>("Token Expire Login Again", HttpStatus.NOT_ACCEPTABLE);
+        return new ResponseEntity<>("Token Expire Login Again", HttpStatus.UNAUTHORIZED);
     }
     @ExceptionHandler(UsernameNotFoundException.class)
     public ResponseEntity<String> handleUserNotFound(UsernameNotFoundException ex){
-        return new ResponseEntity<>("You not register please Register first..",HttpStatus.BAD_REQUEST);
+        return new ResponseEntity<>("You not register please Register first..",HttpStatus.UNAUTHORIZED);
     }
     @ExceptionHandler(BadCredentials.class)
     public ResponseEntity<String> handleBadCredential(BadCredentials ex){
-        return new ResponseEntity<>(ex.getMessage(),HttpStatus.BAD_REQUEST);
+        return new ResponseEntity<>(ex.getMessage(),HttpStatus.UNAUTHORIZED);
     }
     @ExceptionHandler(UsernameAlreadyExists.class)
     public ResponseEntity<String> handleUsernameAlreadyExists(UsernameAlreadyExists ex){
@@ -71,6 +71,11 @@ public class GlobalExceptionHandler {
     public  ResponseEntity<String> handleDuplicateItemException( DuplicateItem ex){
         return new ResponseEntity <>(ex.getMessage(),HttpStatus.BAD_REQUEST);
 
+    }
+
+    @ExceptionHandler(CartNotFound.class)
+    public  ResponseEntity<String> handleCartNotFound(CartNotFound e){
+        return new ResponseEntity<>(e.getMessage(),HttpStatus.NOT_FOUND);
     }
 
 }

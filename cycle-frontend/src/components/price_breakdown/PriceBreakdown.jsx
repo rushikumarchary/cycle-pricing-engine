@@ -1,90 +1,98 @@
-import PropTypes from "prop-types";
-import { useEstimate } from "../../hooks/useEstimate";
+import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
+import cycle1 from "../../assets/cycle1.webp";
+import cycle2 from "../../assets/cycle2.webp";
+import cycle3 from "../../assets/cycle3.webp";
+import cycle4 from "../../assets/cycle4.webp";
+import { cartAPI } from "../../utils/api";
 
 function PriceBreakdown({ priceData, handleClear }) {
-  PriceBreakdown.propTypes = {
-    priceData: PropTypes.shape({
-      brand: PropTypes.string,
-      tyre: PropTypes.string,
-      wheel: PropTypes.string,
-      frame: PropTypes.string,
-      seating: PropTypes.string,
-      brakes: PropTypes.string,
-      chainAssembly: PropTypes.string,
-      handlebar: PropTypes.string,
-      price: PropTypes.number,
-      gst: PropTypes.number,
-      discount: PropTypes.number,
-      totalPrice: PropTypes.number,
-      partsPrice: PropTypes.object,
-    }).isRequired,
-    handleClear: PropTypes.func.isRequired,
+  const navigate = useNavigate();
+
+  // Brand to image mapping
+  const brandImageMap = {
+    'Honda': cycle1,
+    'Tata': cycle2,
+    'Atlas': cycle3,
+    'Hero': cycle4
   };
 
-  const { addEstimate } = useEstimate();
-
-  const handleSaveEstimate = () => {
-    // Format the data to match Estimates.jsx structure
-    const formattedEstimate = {
-      formData: {
-        brand: priceData.brand,
-        frame: priceData.frame,
-        handlebar: priceData.handlebar,
-        seating: priceData.seating,
-        wheel: priceData.wheel,
-        tyre: priceData.tyre,
-        brakes: priceData.brakes,
-        chainAssembly: priceData.chainAssembly
-      },
-      prices: {
-        frame: priceData.partsPrice[priceData.frame],
-        handlebar: priceData.partsPrice[priceData.handlebar],
-        seating: priceData.partsPrice[priceData.seating],
-        wheel: priceData.partsPrice[priceData.wheel],
-        tyre: priceData.partsPrice[priceData.tyre],
-        brakes: priceData.partsPrice[priceData.brakes],
-        chainAssembly: priceData.partsPrice[priceData.chainAssembly]
-      },
-      totalPartsPrice: priceData.price,
-      gstAmount: priceData.gst,
-      finalPrice: priceData.totalPrice
-    };
-
-    addEstimate(formattedEstimate);
-
+  const handleAddToCart = async () => {
+    // Create toast mixin
     const Toast = Swal.mixin({
       toast: true,
       position: "top-end",
       showConfirmButton: false,
-      timer: 3000,
       timerProgressBar: true,
-      didOpen: () => {},
     });
+
+    // Show loading toast
     Toast.fire({
-      icon: "success",
-      title: "Your bike estimate has been saved.",
-    }).then(() => {
-      handleClear();
+      title: 'Adding to cart...',
+      didOpen: () => {
+        Swal.showLoading();
+      },
+      allowOutsideClick: false
     });
+
+    try {
+      // Extract itemIds from parts
+      const itemIds = Object.values(priceData.parts).map(part => part.itemId);
+
+      // Get the correct image based on brand
+      const thumbnailImage = brandImageMap[priceData.brand] || cycle1; // Default to cycle1 if brand not found
+
+      // Prepare API request body
+      const apiRequestBody = {
+        brand: priceData.brand,
+        itemIds: itemIds,
+        thumbnail: thumbnailImage,
+        quantity: 1
+      };
+
+      // Make API call using cartAPI
+      await cartAPI.addToCart(apiRequestBody);
+      
+      // Update toast to success
+      Toast.fire({
+        icon: "success",
+        title: "Added to cart successfully!",
+        timer: 1500,
+        timerProgressBar: false,
+      });
+
+      handleClear();
+      // Navigate to cart after success
+      setTimeout(() => {
+        navigate('/cart');
+      }, 1500);
+      
+    } catch (error) {
+      console.error("Error adding to cart:", error);
+      Toast.fire({
+        icon: "error",
+        title: "Failed to add item to cart",
+        timer: 1500
+      });
+    }
   };
 
-  // Define the component mapping
-  const componentMapping = [
-    { type: "Frame Material", key: "frame" },
-    { type: "Handlebar Type", key: "handlebar" },
-    { type: "Seating Type", key: "seating" },
-    { type: "Wheel Type", key: "wheel" },
-    { type: "Tyre Type", key: "tyre" },
-    { type: "Brakes Type", key: "brakes" },
-    { type: "Chain Assembly", key: "chainAssembly" }
+  // Define the parts mapping for the table
+  const partsMapping = [
+    { label: "Frame Material", key: "Frame" },
+    { label: "Handlebar Type", key: "Handlebar" },
+    { label: "Seating Type", key: "Seating" },
+    { label: "Wheel Type", key: "Wheel" },
+    { label: "Brakes Type", key: "Brakes" },
+    { label: "Tyre Type", key: "Tyre" },
+    { label: "Chain Assembly", key: "Chain Assembly" }
   ];
 
   return (
     <>
-      <div className="container ">
+      <div className="container">
         <h3 className="text-center font-bold pb-2 md:text-4xl text-2xl md:mb-4 text-[#213832]">
-          {priceData.brand} Cycle Price
+          <span className="text-blue-700">{priceData.brand}</span> Cycle Price
         </h3>
         <div className="price-table-container">
           <table className="price-table">
@@ -96,41 +104,27 @@ function PriceBreakdown({ priceData, handleClear }) {
               </tr>
             </thead>
             <tbody>
-              {componentMapping.map(({ type, key }) => {
-                const selectedItem = priceData[key];
-                const price = priceData.partsPrice[selectedItem];
+              {partsMapping.map(({ label, key }) => {
+                const part = priceData.parts[key];
                 return (
                   <tr key={key}>
-                    <td>{type}</td>
-                    <td>{selectedItem}</td>
-                    <td>{price?.toFixed(2)}</td>
+                    <td>{label}</td>
+                    <td>{part?.itemName || "N/A"}</td>
+                    <td>{part?.price?.toFixed(2) || "0.00"}</td>
                   </tr>
                 );
               })}
               <tr className="total-row">
                 <td colSpan="2">Total Parts Price</td>
-                <td>{priceData.price.toFixed(2)}</td>
+                <td>{priceData.totalPartsPrice.toFixed(2)}</td>
               </tr>
               <tr className="total-row">
-                <td colSpan="2">GST (18%)</td>
-                <td>{priceData.gst.toFixed(2)}</td>
-              </tr>
-              <tr className="total-row">
-                <td colSpan="2">Discount Applied</td>
-                <td>{priceData.discount.toFixed(2)}</td>
-              </tr>
-              <tr className="total-row font-bold">
-                <td colSpan="2">Final Price</td>
-                <td>{priceData.totalPrice.toFixed(2)}</td>
-              </tr>
-              <tr className="total-row">
-                <td colSpan="3" style={{ textAlign: "center" }}>
+                <td colSpan="3" style={{ textAlign: "center" }} className="space-x-4">
                   <button
-                    id="saveEstimate"
-                    onClick={handleSaveEstimate}
-                    className="bg-blue-500 text-white font-bold p-2 rounded-md hover:bg-blue-600 transition-colors"
+                    onClick={handleAddToCart}
+                    className="bg-green-500 text-white font-bold p-2 rounded-md hover:bg-green-600 transition-colors ml-4"
                   >
-                    Save Estimated Price
+                    Add to Cart
                   </button>
                 </td>
               </tr>

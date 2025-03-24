@@ -5,13 +5,15 @@ import { isAuthenticated } from './auth';
 axios.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Handle session expiration
     if (error.response?.status === 403) {
-      // Only handle as session expired if the token is actually expired
       if (!isAuthenticated()) {
         localStorage.removeItem('token');
         window.location.href = '/signIn';
       }
     }
+
+    
     return Promise.reject(error);
   }
 );

@@ -14,7 +14,6 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class Cycle {
-
 	private int brandId;
 	private int tyreItemId;
 	private int wheelItemId;
@@ -23,5 +22,5 @@ public class Cycle {
 	private int brakesItemId;
 	private int chainAssemblyItemId;
 	private int handlebarItemId;
-	
+
 }

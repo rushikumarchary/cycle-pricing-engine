@@ -1,9 +1,8 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
 import Swal from "sweetalert2";
 import PropTypes from 'prop-types';
-import { getAuthHeader } from '../../utils/auth';
-import DomainName from '../../utils/config';
+import { isAuthenticated } from '../../utils/auth';
+import { itemAPI } from '../../utils/api';
 
 const UpdateItem = ({ isOpen, onClose, itemId, currentValidTo, currentPrice, onUpdateSuccess }) => {
   const [validTo, setValidTo] = useState('');
@@ -43,21 +42,13 @@ const UpdateItem = ({ isOpen, onClose, itemId, currentValidTo, currentPrice, onU
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const formattedDate = formatDateTime(validTo);
-      console.log('Sending data:', { itemId, validTo: formattedDate, price });
-      
-      const params = new URLSearchParams({
-        itemId: itemId,
-        validTo: formattedDate,
-        price: price
-      });
+      if (!isAuthenticated()) {
+        return;
+      }
 
-      const response = await axios.patch(
-        `${DomainName}/item/update/date-and-price?${params.toString()}`,
-        null,
-        getAuthHeader()
-      );
-      console.log('Response:', response.data);
+      const formattedDate = formatDateTime(validTo);
+      
+      await itemAPI.updateDateAndPrice(itemId, formattedDate, price);
 
       onClose();
       onUpdateSuccess();

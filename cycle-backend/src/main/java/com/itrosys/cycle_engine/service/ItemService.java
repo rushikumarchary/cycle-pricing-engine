@@ -123,18 +123,18 @@ public class ItemService {
     }
 
 
-    public ItemResponse getItemById(int id) {
-
-        Item item = itemRepository.findById(id)
-                .orElseThrow(() -> new ItemNotFound("Item with id " + id + " not found"));
-
-        if (item.getIsActive() == IsActive.N || item.getBrand().getIsActive() == IsActive.N) {
-            throw new ItemNotFound("Item with ID " + id + " is not found ");
-        }
-
-
-        return mapToItemResponse(item, "Item Found Successfully.");
-    }
+//    public ItemResponse getItemById(int id) {
+//
+//        Item item = itemRepository.findById(id)
+//                .orElseThrow(() -> new ItemNotFound("Item with id " + id + " not found"));
+//
+//        if (item.getIsActive() == IsActive.N || item.getBrand().getIsActive() == IsActive.N) {
+//            throw new ItemNotFound("Item with ID " + id + " is not found ");
+//        }
+//
+//
+//        return mapToItemResponse(item, "Item Found Successfully.");
+//    }
 
     public List<ItemResponse> getItemsByBrandName(String brandName) {
 
@@ -180,6 +180,7 @@ public class ItemService {
     }
 
 
+//
 //    public List<ItemResponse> getItemsByType(String type, int brandId) {
 //        // Fetch distinct item types from the database
 //        List<String> distinctItemTypes = itemRepository.findDistinctItemTypes();
@@ -197,7 +198,9 @@ public class ItemService {
 //            throw new ItemNotFound("No active items found for type: " + type);
 //        }
 //
-//        return items.stream()
+//        // Filter items where brandId matches the given brandId
+//        List<ItemResponse> filteredItems = items.stream()
+//                .filter(item -> item.getBrand().getBrandId() == brandId)
 //                .map(item -> ItemResponse.builder()
 //                        .itemId(item.getItemId())
 //                        .itemName(item.getItemName())
@@ -208,48 +211,16 @@ public class ItemService {
 //                        .brandId(item.getBrand().getBrandId())
 //                        .build())
 //                .toList();
+//
+//        // If no items match the given brandId, throw an exception
+//        if (filteredItems.isEmpty()) {
+//            throw new ItemNotFound("No active items found for type: " + type + " and brandId: " + brandId);
+//        }
+//
+//        return filteredItems;
 //    }
 
-    public List<ItemResponse> getItemsByType(String type, int brandId) {
-        // Fetch distinct item types from the database
-        List<String> distinctItemTypes = itemRepository.findDistinctItemTypes();
-
-        // Check if the given type exists in the list
-        if (!distinctItemTypes.contains(type)) {
-            throw new ItemNotFound("Item type '" + type + "' not found.");
-        }
-
-        // Fetch items for the given type
-        List<Item> items = itemRepository.findByItemTypeAndIsActiveAndBrand_IsActive(type, IsActive.Y, IsActive.Y);
-
-        // If no active items are found, throw an exception
-        if (items.isEmpty()) {
-            throw new ItemNotFound("No active items found for type: " + type);
-        }
-
-        // Filter items where brandId matches the given brandId
-        List<ItemResponse> filteredItems = items.stream()
-                .filter(item -> item.getBrand().getBrandId() == brandId)
-                .map(item -> ItemResponse.builder()
-                        .itemId(item.getItemId())
-                        .itemName(item.getItemName())
-                        .itemType(item.getItemType())
-                        .price(item.getPrice())
-                        .validTo(item.getValidTo())
-                        .brandName(item.getBrand().getBrandName())
-                        .brandId(item.getBrand().getBrandId())
-                        .build())
-                .toList();
-
-        // If no items match the given brandId, throw an exception
-        if (filteredItems.isEmpty()) {
-            throw new ItemNotFound("No active items found for type: " + type + " and brandId: " + brandId);
-        }
-
-        return filteredItems;
-    }
-
-    public Item deleteById(int id) {
+    public String deleteById(int id) {
         Item item = itemRepository.findById(id)
                 .orElseThrow(() -> new ItemNotFound("Item with Id " + id + " not found"));
 
@@ -274,9 +245,9 @@ public class ItemService {
         // Mark item as inactive and update
         item.setIsActive(IsActive.N);
         item.setModifiedBy(getLoggedInUsername());
-        item = itemRepository.save(item);
+         itemRepository.save(item);
 
-        return item;
+        return "Item Deleted successfully";
     }
 
 

@@ -10,16 +10,19 @@ import java.util.Collections;
 public class CustomUserDetails implements UserDetails {
 
 
-    private  Users user;
-    public CustomUserDetails(Users user){
+    private User user;
+    public CustomUserDetails(User user){
         this.user= user;
     }
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return Collections.singleton(new SimpleGrantedAuthority(user.getRole().getName()));
     }
+    public Long getId() {  // Add this method
+        return user.getId();
+    }
     public String getEmail() {
-        return user.getEmail();  // Ensure that Users entity has an getEmail() method
+        return user.getEmail();  // Ensure that User entity has an getEmail() method
     }
 
     @Override

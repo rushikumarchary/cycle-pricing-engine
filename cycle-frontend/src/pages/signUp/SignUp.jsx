@@ -1,10 +1,9 @@
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useState } from "react";
-import axios from "axios";
 import Swal from "sweetalert2";
 import { AiOutlineEye, AiOutlineEyeInvisible } from "react-icons/ai";
 import { FaBicycle, FaTools, FaCogs } from "react-icons/fa";
-import DomainName from "../../utils/config";
+import { authAPI } from "../../utils/api";
 
 function SignUp() {
   const [formData, setFormData] = useState({
@@ -113,7 +112,6 @@ function SignUp() {
 
     // Show loading alert
     Swal.fire({
-     
       title: "Creating Account...",
       html: "Please wait...",
       allowOutsideClick: false,
@@ -123,15 +121,8 @@ function SignUp() {
     });
 
     try {
-      await axios.post(`${DomainName}/auth/signUp`, formData);
+      await authAPI.signUp(formData);
 
-      // Close loading alert and show success message
-      // await Swal.fire({
-      //   icon: "success",
-      //   title: "Registration Successful!",
-      //   text: "Please login with your credentials",
-      //   showConfirmButton: true,
-      // });
       const Toast = Swal.mixin({
         toast: true,
         position: "top-center",
@@ -149,9 +140,6 @@ function SignUp() {
       }).then(() => {
         navigate(`/signIn?redirectTo=${encodeURIComponent(redirectTo)}`);
       });
-
-      // Redirect to login while preserving the original redirect path
-      
     } catch (error) {
       // Close the loading alert first
       Swal.close();

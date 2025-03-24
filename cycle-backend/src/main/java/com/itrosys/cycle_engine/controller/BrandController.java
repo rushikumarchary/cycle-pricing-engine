@@ -29,17 +29,6 @@ public class BrandController {
         return new ResponseEntity<>(brandService.getAllBrands(), HttpStatus.OK);
     }
 
-    @Operation(summary = "Get brand by ID", description = "Fetch brand details by its ID")
-    @GetMapping("/{id}")
-    public ResponseEntity<BrandResponse> getBrandById(@PathVariable int id) {
-        return new ResponseEntity<>(brandService.getBrand(id), HttpStatus.OK);
-    }
-
-    @Operation(summary = "Get brand by Name", description = "Fetch brand details by its name")
-    @GetMapping("/by-name")
-    public ResponseEntity<BrandResponse> getBrandByName(@RequestParam String name) {
-        return new ResponseEntity<>(brandService.getBrandByName(name), HttpStatus.OK);
-    }
 
     @Operation(summary = "Add a new brand", description = "Creates a new brand", security = @SecurityRequirement(name = "basicAuth"))
     @PostMapping("/add")
@@ -54,12 +43,6 @@ public class BrandController {
         return ResponseEntity.ok(brandService.updateBrandName(request.getId(), request.getNewBrandName()));
     }
 
-    @Operation(summary = "Make brand Active", description = "Active the brand name by its ID", security = @SecurityRequirement(name = "basicAuth"))
-    @PatchMapping("/make-active/{id}")
-    public ResponseEntity<BrandResponse> makeBrandActive(@PathVariable int id) {
-        return new ResponseEntity<>(brandService.makeBrandActive(id), HttpStatus.ACCEPTED);
-
-    }
 
     @Operation(summary = "Delete brand by ID", description = "Removes a brand using its ID", security = @SecurityRequirement(name = "basicAuth"))
     @DeleteMapping("/delete/{id}")
@@ -67,3 +50,4 @@ public class BrandController {
         return new ResponseEntity<>(brandService.deleteBrandById(id), HttpStatus.ACCEPTED);
     }
 }
+

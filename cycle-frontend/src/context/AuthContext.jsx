@@ -1,21 +1,25 @@
 import { useState, useEffect } from 'react';
-import { isAuthenticated, getUserName, getUserEmail } from '../utils/auth';
+import { isAuthenticated, getUserName, getUserEmail, getUserId } from '../utils/auth';
 import { AuthContext } from './AuthContextDefinition';
 
 // eslint-disable-next-line react/prop-types
 const AuthProvider = ({ children }) => {
   const [userName, setUserName] = useState(null);
   const [userEmail, setUserEmail] = useState(null);
+  const [userId, setUserId] = useState(null);
 
   const updateUserStatus = () => {
     if (isAuthenticated()) {
       const name = getUserName();
       const email = getUserEmail();
+      const id = getUserId();
       setUserName(name);
       setUserEmail(email);
+      setUserId(id);
     } else {
       setUserName(null);
       setUserEmail(null);
+      setUserId(null);
     }
   };
 
@@ -46,10 +50,11 @@ const AuthProvider = ({ children }) => {
     localStorage.removeItem('token');
     setUserName(null);
     setUserEmail(null);
+    setUserId(null);
   };
 
   return (
-    <AuthContext.Provider value={{ userName, userEmail, login, logout }}>
+    <AuthContext.Provider value={{ userName, userEmail, userId, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

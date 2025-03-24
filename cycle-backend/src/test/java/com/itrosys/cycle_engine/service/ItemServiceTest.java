@@ -34,22 +34,10 @@ class ItemServiceTest {
     }
 
     // this is getItemBy Id test Cases
-    @Test
-    void getItemById_Success() {
-        ItemResponse response = itemService.getItemById(1);
-        assertNotNull(response);
-        assertEquals(1, response.getItemId());
-        assertEquals("Steel", response.getItemName());
-        System.out.println("Test Passed  " + response);
-
-    }
 
 
-    @Test
-    void getItemById_itemNotFound() {
-        Exception ex = assertThrows(ItemNotFound.class, () -> itemService.getItemById(400));
-        System.out.println("test Passed " + ex.getMessage());
-    }
+
+
 
     //        This is getItemsByBrandName method test cases
     @Test
@@ -94,20 +82,7 @@ class ItemServiceTest {
 
     }
 
-    //    This is getItemByType method test cases
-    @Test
-    void getItemsByType_Success() {
-        List<ItemResponse> items = itemService.getItemsByType("Frame", 1);
-        assertNotNull(items);
-        assertFalse(items.isEmpty());
-        System.out.println(" Test Passed: Found " + items.size() + " items of type 'Frame'");
-    }
 
-    @Test
-    void getItemsByType_ItemTypeNotFound() {
-        Exception exception = assertThrows(ItemNotFound.class, () -> itemService.getItemsByType("Disc", 1));
-        System.out.println(" Test Passed: " + exception.getMessage());
-    }
 
     //Make the Item Active
     @Test

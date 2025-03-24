@@ -1,9 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import Swal from "sweetalert2";
 import PriceBreakdown from "../../components/price_breakdown/PriceBreakdown";
-import axios from "axios";
-import { getAuthHeader } from "../../utils/auth";
-import DomainName from "../../utils/config";
+import { calculateAPI } from "../../utils/api";
 
 function CalculateForm() {
   const [formData, setFormData] = useState({
@@ -27,9 +25,8 @@ function CalculateForm() {
 
   useEffect(() => {
     // Fetch brands on component mount
-    axios
-      .get(`${DomainName}/cycle/brands`, getAuthHeader())
-      .then((response) => setBrands(response.data))
+    calculateAPI.getBrands()
+      .then((data) => setBrands(data))
       .catch((error) => {
         console.error("Error fetching brands:", error);
         setError("Failed to fetch brands. Please try again later.");
@@ -52,11 +49,8 @@ function CalculateForm() {
     setError(""); // Reset error message
 
     try {
-      const response = await axios.get(
-        `${DomainName}/cycle/byBrand/${brandId}`,
-        getAuthHeader()
-      );
-      setItems(response.data);
+      const data = await calculateAPI.getItemsByBrand(brandId);
+      setItems(data);
       setFormData((prev) => ({
         ...prev,
         brand: brandId,
@@ -69,7 +63,6 @@ function CalculateForm() {
         chainAssembly: "",
       }));
     } catch (error) {
-      console.log(error);
       console.error("Error fetching items:", error);
       setError("Failed to fetch items for selected brand. Please try again.");
       setFormData((prev) => ({ ...prev, brand: "" }));
@@ -88,8 +81,9 @@ function CalculateForm() {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+
     setIsSubmitted(false);
     const emptyFields = Object.keys(formData).filter(
       (key) => formData[key] === "" && key !== "comments"
@@ -105,50 +99,29 @@ function CalculateForm() {
       return;
     }
 
-    Swal.fire({
-      title: "Are you sure?",
-      text: "Do you want to calculate the price?",
-      icon: "question",
-      showCancelButton: true,
-      confirmButtonText: "Yes, calculate",
-      cancelButtonText: "No, cancel",
-    }).then((result) => {
-      if (!result.isConfirmed) {
-        return;
-      }
+    const requestData = {
+      brandId: formData.brand,
+      tyreItemId: formData.tyre,
+      wheelItemId: formData.wheel,
+      frameItemId: formData.frame,
+      seatingItemId: formData.seating,
+      brakesItemId: formData.breaks,
+      chainAssemblyItemId: formData.chainAssembly,
+      handlebarItemId: formData.handlebar,
+    };
 
-      const requestData = {
-        brandId: formData.brand,
-        tyreItemId: formData.tyre,
-        wheelItemId: formData.wheel,
-        frameItemId: formData.frame,
-        seatingItemId: formData.seating,
-        brakesItemId: formData.breaks,
-        chainAssemblyItemId: formData.chainAssembly,
-        handlebarItemId: formData.handlebar,
-      };
-
-      axios
-        .post(
-          `${DomainName}/cycle/calculate-price`,
-          requestData,
-          getAuthHeader()
-        )
-        .then((response) => {
-          console.log(response.data);
-
-          setPriceData(response.data);
-          setIsSubmitted(true);
-        })
-        .catch((error) => {
-          console.error("Error calculating price:", error);
-          Swal.fire({
-            icon: "error",
-            title: "Error",
-            text: "Failed to calculate price. Please try again.",
-          });
-        });
-    });
+    try {
+      const data = await calculateAPI.calculatePrice(requestData);
+      setPriceData(data);
+      setIsSubmitted(true);
+    } catch (error) {
+      console.error("Error calculating price:", error);
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "Failed to calculate price. Please try again.",
+      });
+    }
   };
 
   const handleClear = () => {
@@ -166,7 +139,6 @@ function CalculateForm() {
     setItems(null);
     setIsSubmitted(false);
     setError("");
-    console.log("Form cleared:", formData);
   };
 
   return (
@@ -396,12 +368,15 @@ function CalculateForm() {
               )}
             </div>
           </form>
-          {isSubmitted && priceData && (
+        </div>
+
+        {isSubmitted && priceData && (
+          <div className="form-container " style={{ marginTop: "0.5rem" }}>
             <div ref={breakdownRef} className="mt-7 scroll-mt-[4.5rem]">
               <PriceBreakdown priceData={priceData} handleClear={handleClear} />
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </>
   );

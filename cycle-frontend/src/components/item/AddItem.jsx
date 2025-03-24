@@ -1,9 +1,8 @@
 /* eslint-disable react/prop-types */
 import { useState } from "react";
-import axios from "axios";
-import Swal from "sweetalert2";
-import { getAuthHeader, handleApiError, isAuthenticated } from '../../utils/auth';
-import DomainName from "../../utils/config";
+import { isAuthenticated } from '../../utils/auth';
+import { itemAPI } from "../../utils/api";
+import toast from "react-hot-toast";
 
 const AddItem = ({ isOpen, onClose, selectedBrand, onItemAdded }) => {
   const [newItem, setNewItem] = useState({
@@ -12,6 +11,13 @@ const AddItem = ({ isOpen, onClose, selectedBrand, onItemAdded }) => {
     price: 0,
     validTo: "",
     brandName: "",
+  });
+
+  const [errors, setErrors] = useState({
+    itemName: false,
+    itemType: false,
+    price: false,
+    validTo: false,
   });
 
   // Function to format date to 'yyyy-MM-dd HH:mm:ss'
@@ -26,14 +32,26 @@ const AddItem = ({ isOpen, onClose, selectedBrand, onItemAdded }) => {
 
     return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
   };
+
+  const validateFields = () => {
+    const newErrors = {
+      itemName: !newItem.itemName.trim(),
+      itemType: !newItem.itemType.trim(),
+      price: !newItem.price || newItem.price <= 0,
+      validTo: !newItem.validTo,
+    };
+    setErrors(newErrors);
+    return !Object.values(newErrors).some(error => error);
+  };
+
   const handleAddItem = async (e) => {
     e.preventDefault();
     if (!selectedBrand) {
-      Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: "Please select a brand first",
-      });
+      toast.error("Please select a brand first");
+      return;
+    }
+
+    if (!validateFields()) {
       return;
     }
   
@@ -47,13 +65,7 @@ const AddItem = ({ isOpen, onClose, selectedBrand, onItemAdded }) => {
         brandName: selectedBrand,
       };
   
-      console.log('Sending data:', itemData); // Debug log
-  
-      await axios.post(
-        `${DomainName}/item/add`,
-        itemData,
-        getAuthHeader()
-      );
+      await itemAPI.addItem(itemData);
   
       onClose();
       setNewItem({
@@ -63,17 +75,19 @@ const AddItem = ({ isOpen, onClose, selectedBrand, onItemAdded }) => {
         validTo: "",
         brandName: "",
       });
+      setErrors({
+        itemName: false,
+        itemType: false,
+        price: false,
+        validTo: false,
+      });
   
       // Notify parent component to refresh the items list
       onItemAdded();
+      toast.success("Item added successfully")
   
-      Swal.fire({
-        icon: "success",
-        title: "Success",
-        text: "Item added successfully",
-      });
     } catch (error) {
-      handleApiError(error);
+      toast.error(error.response?.data?.message || "Failed to add item")
     }
   }; 
 
@@ -90,13 +104,17 @@ const AddItem = ({ isOpen, onClose, selectedBrand, onItemAdded }) => {
             </label>
             <input
               type="text"
-              className="w-full p-2 border rounded"
+              className={`w-full p-2 border rounded ${errors.itemName ? 'border-red-500' : ''}`}
               value={newItem.itemName}
-              onChange={(e) =>
-                setNewItem({ ...newItem, itemName: e.target.value })
-              }
-              required
+              onChange={(e) => {
+                setNewItem({ ...newItem, itemName: e.target.value });
+                setErrors({ ...errors, itemName: false });
+              }}
+              
             />
+            {errors.itemName && (
+              <p className="text-red-500 text-sm mt-1">Item name is required</p>
+            )}
           </div>
 
           <div className="mb-4">
@@ -105,13 +123,17 @@ const AddItem = ({ isOpen, onClose, selectedBrand, onItemAdded }) => {
             </label>
             <input
               type="text"
-              className="w-full p-2 border rounded"
+              className={`w-full p-2 border rounded ${errors.itemType ? 'border-red-500' : ''}`}
               value={newItem.itemType}
-              onChange={(e) =>
-                setNewItem({ ...newItem, itemType: e.target.value })
-              }
-              required
+              onChange={(e) => {
+                setNewItem({ ...newItem, itemType: e.target.value });
+                setErrors({ ...errors, itemType: false });
+              }}
+              
             />
+            {errors.itemType && (
+              <p className="text-red-500 text-sm mt-1">Item type is required</p>
+            )}
           </div>
 
           <div className="mb-4">
@@ -120,16 +142,20 @@ const AddItem = ({ isOpen, onClose, selectedBrand, onItemAdded }) => {
             </label>
             <input
               type="number"
-              className="w-full p-2 border rounded"
+              className={`w-full p-2 border rounded ${errors.price ? 'border-red-500' : ''}`}
               value={newItem.price}
-              onChange={(e) =>
+              onChange={(e) => {
                 setNewItem({
                   ...newItem,
                   price: parseFloat(e.target.value),
-                })
-              }
-              required
+                });
+                setErrors({ ...errors, price: false });
+              }}
+              
             />
+            {errors.price && (
+              <p className="text-red-500 text-sm mt-1">Price must be greater than 0</p>
+            )}
           </div>
 
           <div className="mb-4">
@@ -138,21 +164,42 @@ const AddItem = ({ isOpen, onClose, selectedBrand, onItemAdded }) => {
             </label>
             <input
               type="datetime-local"
-              className="w-full p-2 border rounded"
+              className={`w-full p-2 border rounded ${errors.validTo ? 'border-red-500' : ''}`}
               value={newItem.validTo ? newItem.validTo.replace(" ", "T") : ""}
               onChange={(e) => {
                 const formattedDate = formatDateTime(e.target.value);
                 setNewItem({ ...newItem, validTo: formattedDate });
+                setErrors({ ...errors, validTo: false });
               }}
               min={new Date().toISOString().slice(0, 16)}
-              required
+              
             />
+            {errors.validTo && (
+              <p className="text-red-500 text-sm mt-1">Valid to date is required</p>
+            )}
           </div>
 
           <div className="flex justify-end gap-2">
             <button
               type="button"
-              onClick={onClose}
+              onClick={() => {
+                // Clear all form fields
+                setNewItem({
+                  itemName: "",
+                  itemType: "",
+                  price: 0,
+                  validTo: "",
+                  brandName: "",
+                });
+                // Reset all error states
+                setErrors({
+                  itemName: false,
+                  itemType: false,
+                  price: false,
+                  validTo: false,
+                });
+                onClose();
+              }}
               className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
             >
               Cancel

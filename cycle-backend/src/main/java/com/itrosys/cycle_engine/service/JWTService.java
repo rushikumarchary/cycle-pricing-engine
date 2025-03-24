@@ -53,6 +53,7 @@ public class JWTService {
         // Cast userDetails to your custom UserDetails implementation to access email
         if (userDetails instanceof CustomUserDetails customUser) {
             claims.put("email", customUser.getEmail());
+            claims.put("userId", customUser.getId());
         }
 
         return Jwts.builder()

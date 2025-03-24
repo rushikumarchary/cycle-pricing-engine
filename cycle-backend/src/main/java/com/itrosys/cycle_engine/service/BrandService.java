@@ -28,20 +28,6 @@ public class BrandService {
         this.itemRepository = itemRepository;
     }
 
-    public BrandResponse getBrand(int id) {
-        Brand brand = brandRepository.findById(id)
-                .orElseThrow(() -> new BrandNotFound("Brand with ID " + id + " is not found"));
-
-        if (brand.getIsActive() == IsActive.N) {
-            throw new BrandNotFound("Brand with ID " + id + " is not found ");
-        }
-        return BrandResponse.builder()
-                .message("Brand find Successfully")
-                .id(brand.getBrandId())
-                .name(brand.getBrandName())
-                .build();
-    }
-
 
     public List<BrandResponse> getAllBrands() {
         List<Brand> brands = brandRepository.findAll();
@@ -57,20 +43,7 @@ public class BrandService {
                 .toList();
     }
 
-    public BrandResponse getBrandByName(String brandName) {
 
-        Brand brand = brandRepository.findByBrandName(brandName)
-                .orElseThrow(() -> new BrandNotFound("Brand with Name " + brandName + " not found"));
-
-        if (brand.getIsActive() == IsActive.N) {
-            throw new BrandNotFound("Brand with brandName " + brandName + " is not found ");
-        }
-
-        return BrandResponse.builder()
-                .id(brand.getBrandId())
-                .name(brand.getBrandName())
-                .build();
-    }
 
     // Create a new Brand
     public BrandResponse addBrand(String brandName) {
@@ -192,19 +165,4 @@ public class BrandService {
         }
     }
 
-
-    public BrandResponse makeBrandActive(int id) {
-        Brand brand = brandRepository.findById(id)
-                .orElseThrow(() -> new BrandNotFound("Brand with id " + id + " not found"));
-
-            brand.setIsActive(IsActive.N);
-            brand.setModifiedBy(getLoggedInUsername());
-        Brand savedBrand = brandRepository.save(brand);
-
-        return BrandResponse.builder()
-                .message("Brand Activated Successfully")
-                .id(savedBrand.getBrandId())
-                .name(savedBrand.getBrandName())
-                .build();
-    }
 }

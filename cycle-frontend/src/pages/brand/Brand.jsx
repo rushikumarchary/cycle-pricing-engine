@@ -1,16 +1,15 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
 import Swal from "sweetalert2";
 import { FaEdit, FaTrash, FaPlus, FaList } from "react-icons/fa";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
-  getAuthHeader,
   isAuthenticated,
   debugToken,
   hasManagementAccess,
   handleApiError,
 } from "../../utils/auth";
-import DomainName from "../../utils/config";
+import { brandAPI } from "../../utils/api";
+import toast from "react-hot-toast";
 
 const Brand = () => {
   const [brands, setBrands] = useState([]);
@@ -18,6 +17,7 @@ const Brand = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [newBrandName, setNewBrandName] = useState("");
   const [editingBrand, setEditingBrand] = useState(null);
+  const [inputError, setInputError] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const [currentPage, setCurrentPage] = useState(1);
@@ -28,14 +28,14 @@ const Brand = () => {
   // Add authentication check
   useEffect(() => {
     const checkAuth = () => {
-      console.log("Checking authentication...");
+      // console.log("Checking authentication...");
       debugToken();
       if (!isAuthenticated()) {
-        console.log("Authentication failed");
+        // console.log("Authentication failed");
         navigate("/signIn", { state: { redirectTo: location.pathname } });
         return;
       }
-      console.log("Authentication successful");
+      // console.log("Authentication successful");
     };
 
     checkAuth();
@@ -55,27 +55,20 @@ const Brand = () => {
         return;
       }
 
-      const headers = getAuthHeader();
-      console.log("Request headers:", headers);
-
-      const response = await axios.get(`${DomainName}/brand/brands`, headers);
+      const response = await brandAPI.getAllBrands();
       console.log("Brands fetch successful:", response);
-      setBrands(response.data);
+      setBrands(response);
 
-      if (response.data.length === 0) {
-        Swal.fire({
-          icon: "info",
-          title: "No Brands Found",
-          text: "There are no brands available. Please add a new brand.",
-        });
+      if (response.length === 0) {
+        toast.error("There are no brands available. Please add a new brand.")
       }
     } catch (error) {
-      console.error("Fetch brands error:", error);
-      if (error.response) {
-        console.log("Error response:", error.response);
-        console.log("Error status:", error.response.status);
-        console.log("Error data:", error.response.data);
-      }
+      // console.error("Fetch brands error:", error);
+      // if (error.response) {
+      //   console.log("Error response:", error.response);
+      //   console.log("Error status:", error.response.status);
+      //   console.log("Error data:", error.response.data);
+      // }
       handleApiError(error);
     }
   };
@@ -119,30 +112,16 @@ const Brand = () => {
   // Add brand with auth check
   const handleAddBrand = async () => {
     if (!newBrandName.trim()) {
-      Swal.fire({
-        icon: "warning",
-        title: "Warning",
-        text: "Brand name cannot be empty",
-      });
+      setInputError(true);
       return;
     }
-
+    setInputError(false);
     try {
-      await axios.post(
-        `${DomainName}/brand/add?name=${newBrandName}`,
-        null,
-        getAuthHeader()
-      );
-
+      await brandAPI.addBrand(newBrandName);
       await fetchBrands();
       setIsAddModalOpen(false);
       setNewBrandName("");
-
-      Swal.fire({
-        icon: "success",
-        title: "Success",
-        text: "Brand added successfully",
-      });
+      toast.success("Brand added successfully")
     } catch (error) {
       handleApiError(error);
     }
@@ -150,44 +129,24 @@ const Brand = () => {
 
   // Edit brand
   const handleEditBrand = async () => {
-    if (!isAuthenticated()) {
+    if (!newBrandName.trim()) {
+      setInputError(true);
       return;
     }
-    if (!newBrandName.trim()) {
-      Swal.fire({
-        icon: "warning",
-        title: "Warning",
-        text: "Brand name cannot be empty",
-      });
+    setInputError(false);
+    if (!isAuthenticated()) {
       return;
     }
 
     try {
-      await axios.patch(
-        `${DomainName}/brand/update`,
-        {
-          id: editingBrand.id,
-          newBrandName: newBrandName,
-        },
-        getAuthHeader()
-      );
-
+      await brandAPI.updateBrand(editingBrand.id, newBrandName);
       await fetchBrands();
       setIsEditModalOpen(false);
       setNewBrandName("");
       setEditingBrand(null);
-
-      Swal.fire({
-        icon: "success",
-        title: "Success",
-        text: "Brand updated successfully",
-      });
+      toast.success("Brand updated Successfully")
     } catch (error) {
-      Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: error.response?.data || "Failed to update brand",
-      });
+      toast.error(error.response?.data || "Failed to update brand");
     }
   };
 
@@ -207,10 +166,7 @@ const Brand = () => {
     }).then(async (result) => {
       if (result.isConfirmed) {
         try {
-          await axios.delete(
-            `${DomainName}/brand/delete/${id}`,
-            getAuthHeader()
-          );
+          await brandAPI.deleteBrand(id);
 
           // Get the current number of brands on the page
           const currentPageBrands = brands.slice(
@@ -225,18 +181,10 @@ const Brand = () => {
           }
 
           await fetchBrands();
-
-          Swal.fire({
-            icon: "success",
-            title: "Deleted!",
-            text: "Brand has been deleted.",
-          });
+          toast.success( "Brand has been deleted.")
         } catch (error) {
-          Swal.fire({
-            icon: "error",
-            title: "Error",
-            text: error.response?.data || "Failed to delete brand",
-          });
+          toast.error(error.response?.data || "Failed to delete brand")
+
         }
       }
     });
@@ -432,15 +380,22 @@ const Brand = () => {
             <input
               type="text"
               value={newBrandName}
-              onChange={(e) => setNewBrandName(e.target.value)}
-              className="border p-2 mb-4 w-full"
+              onChange={(e) => {
+                setNewBrandName(e.target.value);
+                setInputError(false);
+              }}
+              className={`border p-2 mb-1 w-full ${inputError ? 'border-red-500' : ''}`}
               placeholder="Enter brand name"
             />
+            {inputError && (
+              <p className="text-red-500 text-sm mb-3">Please enter a brand name</p>
+            )}
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => {
                   setIsAddModalOpen(false);
                   setNewBrandName("");
+                  setInputError(false);
                 }}
                 className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
               >
@@ -465,16 +420,23 @@ const Brand = () => {
             <input
               type="text"
               value={newBrandName}
-              onChange={(e) => setNewBrandName(e.target.value)}
-              className="border p-2 mb-4 w-full"
+              onChange={(e) => {
+                setNewBrandName(e.target.value);
+                setInputError(false);
+              }}
+              className={`border p-2 mb-1 w-full ${inputError ? 'border-red-500' : ''}`}
               placeholder="Enter new brand name"
             />
+            {inputError && (
+              <p className="text-red-500 text-sm mb-3">Please enter a brand name</p>
+            )}
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => {
                   setIsEditModalOpen(false);
                   setNewBrandName("");
                   setEditingBrand(null);
+                  setInputError(false);
                 }}
                 className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
               >
