@@ -17,6 +17,7 @@ const Cart = () => {
   const { updateCartCount } = useCart();
   const { addOrder } = useOrders();
   const [cart, setCart] = useState([]);
+  const [compareItems, setCompareItems] = useState([]);
   const [totalPrice, setTotalPrice] = useState(0);
   const [totalItemsQuantity, setTotalItemsQuantity] = useState(0);
   const [promoCode, setPromoCode] = useState("");
@@ -279,6 +280,28 @@ const Cart = () => {
     { type: "Chain Assembly", key: "Chain Assembly" },
   ];
 
+  const handleAddToCompare = (cartItem) => {
+    if (compareItems.some(item => item.cartId === cartItem.cartId)) {
+      toast.error("Item already in comparison list");
+      return;
+    }
+    if (compareItems.length >= 3) {
+      toast.error("You can compare up to 3 items only");
+      return;
+    }
+    setCompareItems([...compareItems, cartItem]);
+    toast.success("Added to comparison list");
+  };
+
+  const handleViewCompare = () => {
+    if (compareItems.length < 2) {
+      toast.error("Add at least 2 items to compare");
+      return;
+    }
+    // TODO: Navigate to compare page or show compare modal
+    console.log("Compare items:", compareItems);
+  };
+
   return (
     <>
       {cart.length === 0 ? (
@@ -352,15 +375,23 @@ const Cart = () => {
                             {cartItem.parts.Frame.itemName},
                             {cartItem.parts.Handlebar.itemName},
                             {cartItem.parts.Seating.itemName},
-                          
                           </span>
-                          <button
-                            className="font-semibold hover:text-red-500 text-gray-500 text-sm mt-2 text-left flex items-center gap-1"
-                            onClick={() => handleRemoveOneCart(cartItem.cartId)}
-                          >
-                            <RxCrossCircled size={16} />
-                            Remove
-                          </button>
+                          <div className="flex flex-col lg:flex-row items-start lg:items-center gap-2 lg:gap-4 mt-2">
+                            <button
+                              className="font-semibold hover:text-red-500 text-gray-500 text-sm w-full lg:w-auto flex items-start gap-1 justify-center lg:justify-start"
+                              onClick={() => handleRemoveOneCart(cartItem.cartId)}
+                            >
+                              <RxCrossCircled size={16} />
+                              Remove
+                            </button>
+                            <button
+                              className="font-semibold hover:text-blue-500 text-gray-500 text-sm w-full lg:w-auto flex items-center gap-1 justify-center lg:justify-start"
+                              onClick={() => handleAddToCompare(cartItem)}
+                            >
+                              <span className="text-lg">+</span>
+                              Add to Compare
+                            </button>
+                          </div>
                         </div>
                       </div>
 
@@ -432,13 +463,21 @@ const Cart = () => {
                   ))}
                 </div>
 
-                <button
-                  className="flex items-center font-semibold text-indigo-600 text-sm sm:text-base mt-4 hover:text-indigo-700"
-                  onClick={continueShopping}
-                >
-                  <FaLongArrowAltLeft size={18} className="mr-2" />
-                  Continue Shopping
-                </button>
+                <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4 mt-4">
+                  <button
+                    className="flex items-center justify-center font-semibold text-indigo-600 text-sm sm:text-base hover:text-indigo-700 w-full sm:w-auto"
+                    onClick={continueShopping}
+                  >
+                    <FaLongArrowAltLeft size={18} className="mr-2" />
+                    Continue Shopping
+                  </button>
+                  <button
+                    className="flex items-center justify-center font-semibold text-indigo-600 text-sm sm:text-base hover:text-indigo-700 w-full sm:w-auto"
+                    onClick={handleViewCompare}
+                  >
+                    Compare ({compareItems.length})
+                  </button>
+                </div>
               </div>
             </div>
 

@@ -50,6 +50,7 @@ const Address = ({ isOpen, onClose, onSelectAddress, selectedAddressId }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
     try {
       const addressData = {
         user: { id: userId },
