@@ -14,6 +14,7 @@ import { CartProvider } from "./context/CartContext";
 import { OrderProvider } from "./context/OrderContext";
 import Cart from "./pages/cart/Cart";
 import Orders from "./pages/cart/Orders";
+import ManageOrders from "./pages/orders/ManageOrders";
 import NotFound from "./utils/NotFound";
 import Address from "./pages/address/Address";
 
@@ -53,6 +54,14 @@ function App() {
                     element={
                       <ProtectedRoute requiredRole={["ADMIN", "MANAGER","EMPLOYEE"]}>
                         <Brand />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/manage-orders"
+                    element={
+                      <ProtectedRoute requiredRole={["ADMIN", "MANAGER"]}>
+                        <ManageOrders />
                       </ProtectedRoute>
                     }
                   />

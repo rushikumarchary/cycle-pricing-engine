@@ -53,7 +53,7 @@ export const hasManagementAccess = () => {
     return false;
   }
 
-  const hasAccess =userRole =='EMPLOYEE'|| userRole === 'ADMIN' || userRole === 'MANAGER';
+  const hasAccess = userRole === 'ADMIN' || userRole === 'MANAGER';
   // console.log('Has management access:', hasAccess);
   return hasAccess;
 };

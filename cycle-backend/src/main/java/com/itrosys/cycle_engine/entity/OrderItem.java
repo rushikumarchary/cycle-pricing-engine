@@ -47,7 +47,7 @@ public class OrderItem {
     @Column(nullable = false)
     private String chainAssembly;
 
-    @ManyToOne
+    @ManyToOne(cascade = CascadeType.PERSIST)
     @JoinColumn(name = "order_id", referencedColumnName = "order_id", nullable = false)
     private OrderDetails orderDetails;
 }

@@ -20,12 +20,16 @@ public class PaymentOrder {
     private Long id;
 
     private String razorpayOrderId;
+    private Long orderId;
     private String paymentId;
     private String signature;
-    private int amount;
+    private Double amount;
     private String currency;
     private String status; // CREATED, PAID, FAILED
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
+
+
 }
+

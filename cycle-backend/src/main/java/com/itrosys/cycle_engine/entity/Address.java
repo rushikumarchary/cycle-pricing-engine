@@ -56,4 +56,8 @@ public class Address {
 
     @Column(name = "delivery_instructions", columnDefinition = "TEXT")
     private String deliveryInstructions;
+
+    @OneToOne(cascade = CascadeType.ALL)
+    @JoinColumn(name = "postal_metadata_id")
+    private PostalMetadata postalMetadata;
 }

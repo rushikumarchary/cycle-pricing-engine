@@ -25,14 +25,8 @@ public class PaymentController {
 
     @PostMapping("/create-order")
     public ResponseEntity<Map<String, Object>> createOrder(@RequestBody OrderRequest orderRequest) {
-        try {
-            Map<String, Object> response = paymentService.createOrder(orderRequest);
-            return ResponseEntity.ok(response);
-        } catch (RazorpayException e) {
-            logger.error("Failed to create order", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Failed to create order: " + e.getMessage()));
-        }
+        Map<String, Object> response = paymentService.createOrder(orderRequest);
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/verify-payment")
@@ -40,7 +34,7 @@ public class PaymentController {
         try {
             boolean isValid = paymentService.verifyPayment(request);
             if (isValid) {
-                return ResponseEntity.ok(Map.of("message", "Payment verified successfully"));
+                return ResponseEntity.ok(Map.of("success", "Payment verified successfully"));
             } else {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                         .body(Map.of("error", "Invalid payment signature"));

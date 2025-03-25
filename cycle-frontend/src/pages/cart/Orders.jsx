@@ -1,9 +1,75 @@
-
-import { useOrders } from '../../context/OrderContext';
+import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
+import { useAuth } from '../../hooks/useAuth';
+import { orderAPI } from '../../utils/api';
+import { FaChevronDown, FaChevronUp } from 'react-icons/fa';
+import { MdLocationOn } from 'react-icons/md';
+import { BsBoxSeam, BsSearch } from 'react-icons/bs';
 
 const Orders = () => {
-  const { orders } = useOrders();
+  const { userId } = useAuth();
+  const [orders, setOrders] = useState([]);
+  const [filteredOrders, setFilteredOrders] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [selectedFilter, setSelectedFilter] = useState('last-month');
+  // const [expandedOrderId, setExpandedOrderId] = useState(null);
+  const [expandedItemId, setExpandedItemId] = useState(null);
+  const [showAddress, setShowAddress] = useState({});
+
+  const years = Array.from({ length: 4 }, (_, i) => 2025 - i);
+
+  const fetchOrders = async (filter) => {
+    if (!userId) {
+      setError('Please log in to view orders.');
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await orderAPI.getOrdersByFilter(userId, filter);
+      setOrders(data);
+      setFilteredOrders(data);
+    } catch (err) {
+      setError('Failed to fetch orders. Please try again later.');
+      console.error('Error fetching orders:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Initial fetch when userId is available
+  useEffect(() => {
+    if (userId) {
+      fetchOrders('last-month');
+    }
+  }, [userId]);
+
+  // Handle filter changes
+  useEffect(() => {
+    if (userId && selectedFilter) {
+      fetchOrders(selectedFilter);
+    }
+  }, [selectedFilter, userId]);
+
+  useEffect(() => {
+    // Filter orders based on search query
+    const filtered = orders.filter(order => {
+      const searchLower = searchQuery.toLowerCase();
+      return order.items.some(item => 
+        item.brand.toLowerCase().includes(searchLower) ||
+        item.frame.toLowerCase().includes(searchLower)
+      );
+    });
+    setFilteredOrders(filtered);
+  }, [searchQuery, orders]);
+
+  const handleSearch = (e) => {
+    setSearchQuery(e.target.value);
+  };
 
   const getStatusColor = (status) => {
     switch (status.toLowerCase()) {
@@ -20,69 +86,126 @@ const Orders = () => {
     }
   };
 
+  // const toggleOrderExpansion = (orderId) => {
+  //   setExpandedOrderId(expandedOrderId === orderId ? null : orderId);
+  //   setExpandedItemId(null);
+  //   setShowAddress({});
+  // };
+
+  const toggleItemDetails = (itemId) => {
+    setExpandedItemId(expandedItemId === itemId ? null : itemId);
+  };
+
+  const toggleAddress = (orderId) => {
+    setShowAddress(prev => ({
+      ...prev,
+      [orderId]: !prev[orderId]
+    }));
+  };
+
   return (
     <div className="w-full md:w-[90%] mx-auto mt-6 px-4">
-      <h1 className="text-2xl font-bold mb-6">Order History</h1>
-      
-      {orders.length === 0 ? (
+      {/* Header Row - Title, Filter, and Search in single line */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
+        {/* Title */}
+        <h1 className="text-2xl font-bold whitespace-nowrap">Order History</h1>
+        
+        {/* Filter Dropdown */}
+        <select
+          value={selectedFilter}
+          onChange={(e) => setSelectedFilter(e.target.value)}
+          className="px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 w-[180px]"
+        >
+          <option value="last-month">Last Month</option>
+          <option value="last-three-months">Last 3 Months</option>
+          <option value="last-six-months">Last 6 Months</option>
+          {years.map(year => (
+            <option key={year} value={`year-${year}`}>{year}</option>
+          ))}
+        </select>
+
+        {/* Search Bar */}
+        <div className="relative w-[300px]">
+          <input
+            type="text"
+            placeholder="Search orders by brand or frame"
+            value={searchQuery}
+            onChange={handleSearch}
+            className="w-full px-4 py-2 pl-10 pr-[100px] border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+          />
+          <BsSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+          <button 
+            className="absolute right-2 top-1/2 transform -translate-y-1/2 px-3 py-1 bg-gray-800 text-white rounded-md text-sm hover:bg-gray-700 transition-colors"
+            onClick={() => setSearchQuery('')}
+          >
+            Clear 
+          </button>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="flex justify-center items-center py-8">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500"></div>
+        </div>
+      ) : error ? (
+        <div className="text-center py-8">
+          <p className="text-red-600">{error}</p>
+        </div>
+      ) : orders.length === 0 ? (
         <div className="text-center py-8">
           <p className="text-gray-600">No orders found</p>
         </div>
       ) : (
         <div className="space-y-6">
-          {orders.map((order) => (
-            <div key={order.id} className="bg-white p-6 rounded-lg shadow-md">
+          {filteredOrders.map((order) => (
+            <div key={order.orderId} className="bg-white p-4 sm:p-6 rounded-lg shadow-md transition-all duration-300">
               {/* Order Header */}
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 pb-4 border-b">
-                <div className="space-y-1">
-                  <p className="text-sm text-gray-600">Order ID: <span className="font-medium">{order.id}</span></p>
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
+                <div className="space-y-1 w-full sm:w-auto">
+                  <p className="text-sm text-gray-600">Order ID: <span className="font-medium">{order.orderId}</span></p>
                   <p className="text-sm text-gray-600">
                     Placed on: <span className="font-medium">
-                      {format(new Date(order.date), 'MMM dd, yyyy, hh:mm a')}
+                      {format(new Date(order.orderDate), 'MMM dd, yyyy, hh:mm a')}
                     </span>
                   </p>
                 </div>
-                <div className="mt-2 sm:mt-0 flex flex-col sm:items-end">
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
+                <div className="mt-2 sm:mt-0 flex flex-col sm:items-end w-full sm:w-auto">
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)} w-fit`}>
                     {order.status}
                   </span>
-                  <p className="font-bold text-lg mt-2">₹{order.totalAmount.toFixed(2)}</p>
                 </div>
               </div>
-              
-              {/* Order Items */}
-              <div className="space-y-4">
-                <h3 className="font-semibold text-gray-800">Items</h3>
-                <div className="divide-y">
+
+              {/* Items Summary */}
+              <div className="border-t border-b py-4">
+                <div className="space-y-2">
                   {order.items.map((item) => (
-                    <div key={item.id} className="py-4 first:pt-0 last:pb-0">
-                      <div className="flex items-start gap-4">
-                        <img 
-                          src={item.thumbnail} 
-                          alt={item.title} 
-                          className="w-20 h-20 object-cover rounded-lg shadow-sm"
-                        />
-                        <div className="flex-grow">
-                          <h4 className="font-medium text-gray-900">{item.title}</h4>
-                          <div className="mt-1 text-sm text-gray-600">
-                            <p>Quantity: {item.quantity} × ₹{item.price.toFixed(2)}</p>
-                            <p className="mt-1 font-medium">
-                              Total: ₹{(item.quantity * item.price).toFixed(2)}
-                            </p>
+                    <div key={item.id}>
+                      <div className="flex justify-between items-center">
+                        <button
+                          onClick={() => toggleItemDetails(item.id)}
+                          className="flex items-center gap-2 font-medium text-indigo-600 hover:text-indigo-800"
+                        >
+                          <BsBoxSeam />
+                          {item.brand}
+                          {expandedItemId === item.id ? <FaChevronUp className="w-4 h-4" /> : <FaChevronDown className="w-4 h-4" />}
+                        </button>
+                        <span className="text-gray-600">₹{(item.quantity * item.unitPrice).toFixed(2)}</span>
+                      </div>
+                      
+                      {/* Collapsible Item Details */}
+                      <div className={`mt-2 ml-6 transition-all duration-300 ${expandedItemId === item.id ? 'block' : 'hidden'}`}>
+                        <div className="text-sm text-gray-600">
+                          <p>Quantity: {item.quantity} × ₹{item.unitPrice.toFixed(2)}</p>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 mt-2">
+                            <p><span className="font-medium">Frame:</span> {item.frame}</p>
+                            <p><span className="font-medium">Handlebar:</span> {item.handlebar}</p>
+                            <p><span className="font-medium">Seating:</span> {item.seating}</p>
+                            <p><span className="font-medium">Wheel:</span> {item.wheel}</p>
+                            <p><span className="font-medium">Brakes:</span> {item.brakes}</p>
+                            <p><span className="font-medium">Tyre:</span> {item.tyre}</p>
+                            <p><span className="font-medium">Chain Assembly:</span> {item.chainAssembly}</p>
                           </div>
-                          {/* Parts Details Accordion */}
-                          <details className="mt-2">
-                            <summary className="text-sm text-indigo-600 cursor-pointer hover:text-indigo-700">
-                              View Parts Details
-                            </summary>
-                            <div className="mt-2 pl-2 text-sm text-gray-600 space-y-1">
-                              {Object.entries(item.parts).map(([key, part]) => (
-                                <p key={key}>
-                                  <span className="font-medium">{key}:</span> {part.itemName}
-                                </p>
-                              ))}
-                            </div>
-                          </details>
                         </div>
                       </div>
                     </div>
@@ -90,19 +213,47 @@ const Orders = () => {
                 </div>
               </div>
 
-              {/* Shipping Details */}
-              <div className="mt-4 pt-4 border-t">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <h3 className="font-semibold text-gray-800">Shipping Status</h3>
-                    <p className="text-sm text-gray-600 mt-1">
-                      {order.shippingDetails.status} • Estimated Delivery by{' '}
-                      {format(new Date(order.shippingDetails.estimatedDelivery), 'MMM dd, yyyy')}
-                    </p>
-                  </div>
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(order.shippingDetails.status)}`}>
-                    {order.shippingDetails.status}
-                  </span>
+              {/* Price Summary */}
+              <div className="mt-4 space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Items Total:</span>
+                  <span className="font-medium">₹{order.subtotal.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">GST (18%):</span>
+                  <span className="font-medium">₹{order.gstAmount.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Shipping:</span>
+                  <span className="font-medium">₹{order.shippingCost.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-base font-bold pt-2 border-t">
+                  <span>Grand Total:</span>
+                  <span>₹{order.totalAmount.toFixed(2)}</span>
+                </div>
+              </div>
+
+              {/* Shipping Address Button */}
+              <button
+                onClick={() => toggleAddress(order.orderId)}
+                className="w-full flex items-center justify-between p-2 mt-4 text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors duration-200"
+              >
+                <span className="font-medium flex items-center gap-2">
+                  <MdLocationOn />
+                  Shipping Address
+                </span>
+                {showAddress[order.orderId] ? <FaChevronUp /> : <FaChevronDown />}
+              </button>
+
+              {/* Collapsible Address */}
+              <div className={`mt-2 transition-all duration-300 ${showAddress[order.orderId] ? 'block' : 'hidden'}`}>
+                <div className="text-sm text-gray-600 border-t pt-4">
+                  <p className="font-medium">{order.address.fullName}</p>
+                  <p>{order.address.flatHouseNo}, {order.address.apartment}</p>
+                  <p>{order.address.areaStreet}</p>
+                  <p>{order.address.landmark && `Near ${order.address.landmark}`}</p>
+                  <p>{order.address.city}, {order.address.state} - {order.address.pinCode}</p>
+                  <p>Phone: {order.address.mobileNumber}</p>
                 </div>
               </div>
             </div>

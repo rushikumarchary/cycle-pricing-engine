@@ -6,16 +6,26 @@ import { MdDelete } from "react-icons/md";
 import { useNavigate } from "react-router-dom";
 import logo from "../../assets/logo.png";
 import { useAuth } from "../../hooks/useAuth";
-import { useOrders } from "../../context/OrderContext";
 import { useCart } from "../../context/CartContext";
-import { cartAPI } from "../../utils/api";
+import { cartAPI, compareAPI } from "../../utils/api";
 import React from "react";
 import Address from "../../pages/address/Address";
+import axios from "axios";
+import { getAuthHeader } from '../../utils/auth';
+
+// Loading Overlay Component
+// const LoadingOverlay = ({ message }) => (
+//   <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+//     <div className="bg-white rounded-lg p-6 flex flex-col items-center gap-4">
+//       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500"></div>
+//       <p className="text-lg font-semibold">{message}</p>
+//     </div>
+//   </div>
+// );
 
 const Cart = () => {
-  const { userName, userEmail } = useAuth();
+  const { userName, userEmail, userId } = useAuth();
   const { updateCartCount } = useCart();
-  const { addOrder } = useOrders();
   const [cart, setCart] = useState([]);
   const [compareItems, setCompareItems] = useState([]);
   const [totalPrice, setTotalPrice] = useState(0);
@@ -29,6 +39,8 @@ const Cart = () => {
   const [selectedItem, setSelectedItem] = useState(null);
   const [showAddressModal, setShowAddressModal] = useState(false);
   const [selectedAddress, setSelectedAddress] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState("");
 
   const navigate = useNavigate();
 
@@ -183,90 +195,136 @@ const Cart = () => {
     });
   };
 
-  const handleOrder = async () => {
-    if (!selectedAddress) {
-      setShowAddressModal(true);
-      return;
-    }
-
-    try {
-      await cartAPI.clearCart(userName);
-      const orderItems = cart.map(item => ({
-        id: item.cartId,
-        title: `${item.brand} Cycle`,
-        thumbnail: item.thumbnail,
-        quantity: item.quantity,
-        price: item.partPrice,
-        parts: item.parts
-      }));
-      
-      await addOrder(orderItems, totalPrice);
-      updateCartCount(0);
-      toast.success("Payment Successful! Order has been placed.");
-      navigate("/orders");
-    } catch (error) {
-      console.error("Error processing order:", error);
-      toast.error("Error processing order");
-    }
-  };
-
   const handleAddressSelect = (address) => {
     setSelectedAddress(address);
     setShowAddressModal(false);
-    // Proceed with payment after address selection
-    handleCheckout();
+    // After selecting address, proceed with order creation
+    createOrder(address);
   };
 
-  // eslint-disable-next-line no-unused-vars
-  const handleCheckout = async () => {
-    const isLoaded = await loadRazorpay();
-    if (!isLoaded) {
-      toast.error("Failed to load Razorpay. Please try again.");
-      return;
+  // Modified createOrder function with loading states
+  const createOrder = async (address) => {
+    setIsLoading(true);
+    setLoadingMessage("Creating your order...");
+    try {
+      const orderRequest = {
+        userId: userId,
+        addressId: address.addressId,
+        shippingCost: shippingCost,
+        items: cart.map(item => ({
+          brand: item.brand,
+          quantity: item.quantity,
+          unitPrice: item.partPrice,
+          frame: item.parts.Frame.itemName,
+          handlebar: item.parts.Handlebar.itemName,
+          seating: item.parts.Seating.itemName,
+          wheel: item.parts.Wheel.itemName,
+          brakes: item.parts.Brakes.itemName,
+          tyre: item.parts.Tyre.itemName,
+          chainAssembly: item.parts["Chain Assembly"].itemName
+        }))
+      };
+
+      const response = await axios.post("http://localhost:8080/payments/create-order", orderRequest, getAuthHeader());
+      
+      if (response.data.orderId) {
+        setLoadingMessage("Initializing payment gateway...");
+        await handleCheckout(response.data);
+      } else {
+        throw new Error("Failed to create order");
+      }
+    } catch (error) {
+      setIsLoading(false);
+      setLoadingMessage("");
+      console.error("Error creating order:", error);
+      toast.error(error.response?.data?.message || "Failed to create order. Please try again later.");
     }
+  };
 
-    const options = {
-      key: "rzp_test_5C7srwxYlDtKK8",
-      amount: totalPrice * 100,
-      currency: "INR",
-      name: "Cycle Pricing Engine",
-      description: "Purchase from Cycle Pricing Engine",
-      image: logo,
-      handler: async function (response) {
-        console.log("Payment successful:", response);
-        try {
-          await cartAPI.clearCart(userName);
-          const orderItems = cart.map(item => ({
-            id: item.cartId,
-            title: `${item.brand} Cycle`,
-            thumbnail: item.thumbnail,
-            quantity: item.quantity,
-            price: item.partPrice,
-            parts: item.parts
-          }));
-          
-          await addOrder(orderItems, totalPrice);
-          toast.success("Payment Successful! Order has been placed.");
-          navigate("/orders");
-        } catch (error) {
-          toast.error( error || "Error processing order");
+  // Modified handleCheckout function with better error handling
+  const handleCheckout = async (orderData) => {
+    try {
+      const isLoaded = await loadRazorpay();
+      if (!isLoaded) {
+        throw new Error("Failed to load payment gateway");
+      }
+
+      const options = {
+        key: "rzp_test_5C7srwxYlDtKK8",
+        amount: orderData.amount || 100,
+        currency: orderData.currency || "INR",
+        name: "Cycle Pricing Engine",
+        description: "Purchase from Cycle Pricing Engine",
+        image: logo,
+        order_id: orderData.orderId,
+        handler: async function (response) {
+          setLoadingMessage("Verifying payment...");
+          try {
+            const verificationResponse = await axios.post(
+              "http://localhost:8080/payments/verify-payment",
+              {
+                orderId: response.razorpay_order_id,
+                paymentId: response.razorpay_payment_id,
+                signature: response.razorpay_signature,
+              },
+              getAuthHeader()
+            );
+
+            if (verificationResponse.data.success) {
+              await cartAPI.clearCart(userName);
+              updateCartCount(0);
+              setIsLoading(false);
+              setLoadingMessage("");
+              toast.success("Payment Successful! Order has been Confirmed.");
+              navigate("/orders");
+            } else {
+              throw new Error("Payment verification failed");
+            }
+          } catch (error) {
+            setIsLoading(false);
+            setLoadingMessage("");
+            console.error("Payment verification failed:", error);
+            toast.error("Payment verification failed. Please contact support if amount was deducted.");
+          }
+        },
+        prefill: {
+          name: userName,
+          email: userEmail,
+        },
+        theme: {
+          color: "#28544B",
+        },
+        modal: {
+          ondismiss: function() {
+            setIsLoading(false);
+            setLoadingMessage("");
+            toast.error("Payment cancelled. Please try again.");
+          }
         }
-      },
-      prefill: {
-        name: userName,
-        email: userEmail,
-      },
-      theme: {
-        color: "#28544B",
-      },
-    };  
+      };  
 
-    const rzp = new window.Razorpay(options);
-    rzp.open();
+      const rzp = new window.Razorpay(options);
+      // eslint-disable-next-line no-unused-vars
+      rzp.on('payment.failed', function (response) {
+        setIsLoading(false);
+        setLoadingMessage("");
+        toast.error("Payment failed. Please try again.");
+      });
+      rzp.open();
+    } catch (error) {
+      setIsLoading(false);
+      setLoadingMessage("");
+      toast.error(error.message || "Payment initialization failed. Please try again.");
+    }
   };
 
   const handleCloseModal = () => {
     setSelectedItem(null);
+  };
+
+  // Add handleOrder function
+  const handleOrder = () => {
+    setShowAddressModal(true);
   };
 
   // Component mapping for estimate details
@@ -280,20 +338,26 @@ const Cart = () => {
     { type: "Chain Assembly", key: "Chain Assembly" },
   ];
 
-  const handleAddToCompare = (cartItem) => {
-    if (compareItems.some(item => item.cartId === cartItem.cartId)) {
-      toast.error("Item already in comparison list");
-      return;
-    }
-    if (compareItems.length >= 3) {
-      toast.error("You can compare up to 3 items only");
-      return;
-    }
-    setCompareItems([...compareItems, cartItem]);
-    toast.success("Added to comparison list");
+  const handleAddToCompare =async (id) => {
+
+     const cart = await compareAPI.addToCompare(id, userId);
+     console.log(cart);
+    // if (compareItems.some(item => item.cartId === cartItem.cartId)) {
+    //   toast.error("Item already in comparison list");
+    //   return;
+    // }
+    // if (compareItems.length >= 3) {
+    //   toast.error("You can compare up to 3 items only");
+    //   return;
+    // }
+    // setCompareItems([...compareItems, cartItem]);
+    // toast.success("Added to comparison list");
   };
 
-  const handleViewCompare = () => {
+  const handleViewCompare =async () => {
+    
+    const response = await compareAPI.getAllComparisons();
+    setCompareItems(response);
     if (compareItems.length < 2) {
       toast.error("Add at least 2 items to compare");
       return;
@@ -304,6 +368,14 @@ const Cart = () => {
 
   return (
     <>
+      {isLoading && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 flex flex-col items-center gap-4">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500"></div>
+            <p className="text-lg font-semibold">{loadingMessage}</p>
+          </div>
+        </div>
+      )}
       {cart.length === 0 ? (
         <div className="w-full h-[60vh] flex flex-col items-center justify-center gap-4">
           <h2 className="text-2xl font-bold">Your cart is empty!</h2>
@@ -386,7 +458,7 @@ const Cart = () => {
                             </button>
                             <button
                               className="font-semibold hover:text-blue-500 text-gray-500 text-sm w-full lg:w-auto flex items-center gap-1 justify-center lg:justify-start"
-                              onClick={() => handleAddToCompare(cartItem)}
+                              onClick={() => handleAddToCompare(cartItem.cartId)}
                             >
                               <span className="text-lg">+</span>
                               Add to Compare

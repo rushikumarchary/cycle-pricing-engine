@@ -17,44 +17,32 @@ public class AddressService {
     }
 
     public AddressResponse saveAddress(Address address) {
-        Address save = addressRepository.save(address);
-
-        return AddressResponse.builder()
-                .addressId(save.getId())
-                .userId(save.getUser().getId())
-                .fullName(save.getFullName())
-                .mobileNumber(save.getMobileNumber())
-                .pinCode(save.getPinCode())
-                .flatHouseNo(save.getFlatHouseNo())
-                .apartment(save.getApartment())
-                .areaStreet(save.getAreaStreet())
-                .landmark(save.getLandmark())
-                .city(save.getCity())
-                .state(save.getState())
-                .addressType(save.getAddressType())
-                .deliveryInstructions(save.getDeliveryInstructions())
-                .build();
+        Address savedAddress = addressRepository.save(address);
+        return convertToAddressResponse(savedAddress);
     }
-
 
     public List<AddressResponse> getUserAddresses(Long userId) {
         return addressRepository.findByUserId(userId)
                 .stream()
-                .map(address -> AddressResponse.builder()
-                        .addressId(address.getId())
-                        .userId(address.getUser().getId())  // Only returning userId
-                        .fullName(address.getFullName())
-                        .mobileNumber(address.getMobileNumber())
-                        .pinCode(address.getPinCode())
-                        .flatHouseNo(address.getFlatHouseNo())
-                        .apartment(address.getApartment())
-                        .areaStreet(address.getAreaStreet())
-                        .landmark(address.getLandmark())
-                        .city(address.getCity())
-                        .state(address.getState())
-                        .addressType(address.getAddressType())
-                        .deliveryInstructions(address.getDeliveryInstructions())
-                        .build()
-                ).collect(Collectors.toList());
+                .map(this::convertToAddressResponse)
+                .collect(Collectors.toList());
+    }
+
+    private AddressResponse convertToAddressResponse(Address address) {
+        return AddressResponse.builder()
+                .addressId(address.getId())
+                .userId(address.getUser().getId())
+                .fullName(address.getFullName())
+                .mobileNumber(address.getMobileNumber())
+                .pinCode(address.getPinCode())
+                .flatHouseNo(address.getFlatHouseNo())
+                .apartment(address.getApartment())
+                .areaStreet(address.getAreaStreet())
+                .landmark(address.getLandmark())
+                .city(address.getCity())
+                .state(address.getState())
+                .addressType(address.getAddressType())
+                .deliveryInstructions(address.getDeliveryInstructions())
+                .build();
     }
 }

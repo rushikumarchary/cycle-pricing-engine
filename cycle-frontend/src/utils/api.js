@@ -286,3 +286,117 @@ export const brandAPI = {
     return response.data;
   }
 };
+
+export const compareAPI = {
+  // Get all comparisons
+  getAllComparisons: async () => {
+    const response = await axios.get(
+      `${DomainName}/compare/comparisons`,
+      getAuthHeader()
+    );
+    return response.data;
+  },
+
+  // Add new comparison
+  addToCompare: async (id, userId) => {
+    const response = await axios.post(
+      `${DomainName}/compare/add/${id}/${userId}`,
+      null,
+      getAuthHeader()
+    );
+    return response.data;
+  }
+};
+
+// Order API functions
+export const orderAPI = {
+  // Get orders by filter type
+  getOrdersByFilter: async (userId, filter) => {
+    try {
+      let response;
+      if (filter.includes('year-')) {
+        const year = filter.split('-')[1];
+        response = await axios.get(
+          `${DomainName}/orders/user/${userId}/year/${year}`,
+          getAuthHeader()
+        );
+      } else {
+        response = await axios.get(
+          `${DomainName}/orders/user/${userId}/${filter}`,
+          getAuthHeader()
+        );
+      }
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+      throw error;
+    }
+  },
+
+  // Admin Order Management APIs
+  getAdminLastMonthOrders: async () => {
+    try {
+      const response = await axios.get(
+        `${DomainName}/orders/admin/last-month`,
+        getAuthHeader()
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching admin last month orders:', error);
+      throw error;
+    }
+  },
+
+  getAdminLastThreeMonthsOrders: async () => {
+    try {
+      const response = await axios.get(
+        `${DomainName}/orders/admin/last-three-months`,
+        getAuthHeader()
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching admin last three months orders:', error);
+      throw error;
+    }
+  },
+
+  getAdminLastSixMonthsOrders: async () => {
+    try {
+      const response = await axios.get(
+        `${DomainName}/orders/admin/last-six-months`,
+        getAuthHeader()
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching admin last six months orders:', error);
+      throw error;
+    }
+  },
+
+  getAdminOrdersByYear: async (year) => {
+    try {
+      const response = await axios.get(
+        `${DomainName}/orders/admin/year/${year}`,
+        getAuthHeader()
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching admin orders by year:', error);
+      throw error;
+    }
+  },
+
+  updateOrderStatus: async (orderId, status) => {
+    try {
+      const response = await axios.patch(
+        `${DomainName}/orders/update-status/${orderId}`,
+        { status },
+        getAuthHeader()
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error updating order status:', error);
+      throw error;
+    }
+  }
+};
