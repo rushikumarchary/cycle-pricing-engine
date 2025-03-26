@@ -12,7 +12,6 @@ import lombok.*;
 @NoArgsConstructor
 public class CartItem {
 
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "cart_item_id")
@@ -25,7 +24,6 @@ public class CartItem {
     @ManyToOne
     @JoinColumn(name = "item_id", nullable = false)
     private Item item;
-
 
     public CartItem(Cart cart, Item item) {
         this.cart = cart;

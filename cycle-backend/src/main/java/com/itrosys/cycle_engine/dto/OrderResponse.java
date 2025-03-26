@@ -1,67 +1,80 @@
 package com.itrosys.cycle_engine.dto;
 
+import com.itrosys.cycle_engine.entity.Orders;
+import com.itrosys.cycle_engine.entity.Specifications;
+import com.itrosys.cycle_engine.enums.OrderStatus;
+import lombok.Data;
+
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import com.itrosys.cycle_engine.entity.OrderDetails;
-import com.itrosys.cycle_engine.enums.OrderStatus;
-
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-
-@Getter
-@Setter
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
+@Data
 public class OrderResponse {
     private Long orderId;
+    private Long userId;
+    private Long addressId;
     private LocalDateTime orderDate;
-    private Double totalAmount;
-    private OrderStatus status;
+    private String brand;
+    private Integer quantity;
+    private Double unitPrice;
     private Double subtotal;
+    private Double discountAmount;
     private Double gstAmount;
     private Double shippingCost;
-    private List<OrderItemResponse> items;
-    private Long userId;
-    private AddressResponse address;
+    private Double totalAmount;
+    private OrderStatus status;
+    private String thumbnail;
+    private SpecificationsDTO specifications;
 
-    public static OrderResponse fromEntity(OrderDetails orderDetails) {
-        return OrderResponse.builder()
-                .orderId(orderDetails.getOrderId())
-                .orderDate(orderDetails.getOrderDate())
-                .totalAmount(orderDetails.getTotalAmount())
-                .status(orderDetails.getStatus())
-                .subtotal(orderDetails.getSubtotal())
-                .gstAmount(orderDetails.getGstAmount())
-                .shippingCost(orderDetails.getShippingCost())
-                .userId(orderDetails.getUser().getId())
-                .address(AddressResponse.fromEntity(orderDetails.getAddress()))
-                .items(orderDetails.getItems().stream()
-                        .map(item -> OrderItemResponse.builder()
-                                .id(item.getId())
-                                .brand(item.getBrand())
-                                .quantity(item.getQuantity())
-                                .unitPrice(item.getUnitPrice())
-                                .totalPrice(item.getTotalPrice())
-                                .frame(item.getFrame())
-                                .handlebar(item.getHandlebar())
-                                .seating(item.getSeating())
-                                .wheel(item.getWheel())
-                                .brakes(item.getBrakes())
-                                .tyre(item.getTyre())
-                                .chainAssembly(item.getChainAssembly())
-                                .build())
-                        .collect(Collectors.toList()))
-                .build();
+    @Data
+    public static class SpecificationsDTO {
+        private String frame;
+        private String handlebar;
+        private String seating;
+        private String wheel;
+        private String brakes;
+        private String tyre;
+        private String chainAssembly;
+
+        public static SpecificationsDTO fromEntity(Specifications specifications) {
+            if (specifications == null) {
+                return null;
+            }
+            SpecificationsDTO dto = new SpecificationsDTO();
+            dto.setFrame(specifications.getFrame());
+            dto.setHandlebar(specifications.getHandlebar());
+            dto.setSeating(specifications.getSeating());
+            dto.setWheel(specifications.getWheel());
+            dto.setBrakes(specifications.getBrakes());
+            dto.setTyre(specifications.getTyre());
+            dto.setChainAssembly(specifications.getChainAssembly());
+            return dto;
+        }
     }
 
-    public static List<OrderResponse> fromEntityList(List<OrderDetails> orderDetails) {
-        return orderDetails.stream()
+    public static OrderResponse fromEntity(Orders order) {
+        OrderResponse response = new OrderResponse();
+        response.setOrderId(order.getOrderId());
+        response.setUserId(order.getUser().getId());
+        response.setAddressId(order.getAddress().getId());
+        response.setOrderDate(order.getOrderDate());
+        response.setBrand(order.getBrand());
+        response.setQuantity(order.getQuantity());
+        response.setUnitPrice(order.getUnitPrice());
+        response.setSubtotal(order.getSubtotal());
+        response.setDiscountAmount(order.getDiscountAmount());
+        response.setGstAmount(order.getGstAmount());
+        response.setShippingCost(order.getShippingCost());
+        response.setTotalAmount(order.getTotalAmount());
+        response.setStatus(order.getStatus());
+        response.setThumbnail(order.getThumbnail());
+        response.setSpecifications(SpecificationsDTO.fromEntity(order.getSpecifications()));
+        return response;
+    }
+
+    public static List<OrderResponse> fromEntityList(List<Orders> orders) {
+        return orders.stream()
                 .map(OrderResponse::fromEntity)
                 .collect(Collectors.toList());
     }

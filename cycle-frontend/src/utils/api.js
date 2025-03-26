@@ -1,6 +1,6 @@
 import axios from 'axios';
 import DomainName from './config';
-import { getAuthHeader } from './auth';
+import { getAuthHeader, getUserId, getUserName} from './auth';
 
 // Authentication API functions
 export const authAPI = {
@@ -127,9 +127,25 @@ export const cartAPI = {
     }
   },
 
-  // Clear entire cart for a user
-  clearCart: async (userName) => {
+  // Clear selected cart items
+  clearSelectedItems: async (cartIds) => {
     try {
+      const response = await axios.post(
+        `${DomainName}/cart/clear-selected`,
+        { cartIds },
+        getAuthHeader()
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error clearing selected cart items:', error);
+      throw error;
+    }
+  },
+
+  // Clear entire cart
+  clearCart: async () => {
+    try {
+      const userName = getUserName();
       const response = await axios.delete(
         `${DomainName}/cart/clear/${userName}`,
         getAuthHeader()
@@ -287,6 +303,7 @@ export const brandAPI = {
   }
 };
 
+// Modified compare API functions
 export const compareAPI = {
   // Get all comparisons
   getAllComparisons: async () => {
@@ -297,22 +314,29 @@ export const compareAPI = {
     return response.data;
   },
 
-  // Add new comparison
-  addToCompare: async (id, userId) => {
-    const response = await axios.post(
-      `${DomainName}/compare/add/${id}/${userId}`,
-      null,
-      getAuthHeader()
-    );
-    return response.data;
+  // Add to compare - modified to use getUserId from auth.js
+  addToCompare: async (id) => {
+    try {
+      const userId = getUserId();
+      const response = await axios.post(
+        `${DomainName}/compare/add/${id}/${userId}`,
+        null,
+        getAuthHeader()
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error adding to compare:', error);
+      throw error;
+    }
   }
 };
 
-// Order API functions
+// Modified order API functions
 export const orderAPI = {
-  // Get orders by filter type
-  getOrdersByFilter: async (userId, filter) => {
+  // Get orders by filter - modified to use getUserId from auth.js
+  getOrdersByFilter: async (filter) => {
     try {
+      const userId = getUserId();
       let response;
       if (filter.includes('year-')) {
         const year = filter.split('-')[1];

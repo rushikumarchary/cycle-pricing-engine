@@ -4,7 +4,8 @@ import { useAuth } from '../../hooks/useAuth';
 import { orderAPI } from '../../utils/api';
 import { FaChevronDown, FaChevronUp } from 'react-icons/fa';
 import { MdLocationOn } from 'react-icons/md';
-import { BsBoxSeam, BsSearch } from 'react-icons/bs';
+import {  BsSearch } from 'react-icons/bs';
+import { IoMdBicycle } from "react-icons/io";
 
 const Orders = () => {
   const { userId } = useAuth();
@@ -17,8 +18,18 @@ const Orders = () => {
   // const [expandedOrderId, setExpandedOrderId] = useState(null);
   const [expandedItemId, setExpandedItemId] = useState(null);
   const [showAddress, setShowAddress] = useState({});
+  const [registrationYear, setRegistrationYear] = useState(null);
 
-  const years = Array.from({ length: 4 }, (_, i) => 2025 - i);
+  // Get current year
+  const currentYear = new Date().getFullYear();
+  
+  // Create array of years from registration year to current year
+  const years = registrationYear 
+    ? Array.from(
+        { length: currentYear - registrationYear + 1 },
+        (_, i) => currentYear - i
+      )
+    : [];
 
   const fetchOrders = async (filter) => {
     if (!userId) {
@@ -31,6 +42,11 @@ const Orders = () => {
     setError(null);
     try {
       const data = await orderAPI.getOrdersByFilter(userId, filter);
+      // Extract registration year from the first order's userRegisterDate
+      if (data && data.length > 0 && data[0].userRegisterDate) {
+        const regYear = new Date(data[0].userRegisterDate).getFullYear();
+        setRegistrationYear(regYear);
+      }
       setOrders(data);
       setFilteredOrders(data);
     } catch (err) {
@@ -186,7 +202,8 @@ const Orders = () => {
                           onClick={() => toggleItemDetails(item.id)}
                           className="flex items-center gap-2 font-medium text-indigo-600 hover:text-indigo-800"
                         >
-                          <BsBoxSeam />
+                          {/* <BsBoxSeam /> */}
+                          <IoMdBicycle />
                           {item.brand}
                           {expandedItemId === item.id ? <FaChevronUp className="w-4 h-4" /> : <FaChevronDown className="w-4 h-4" />}
                         </button>

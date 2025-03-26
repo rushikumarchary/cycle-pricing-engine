@@ -1,6 +1,5 @@
 package com.itrosys.cycle_engine.service;
 
-import com.itrosys.cycle_engine.dto.OrderItemRequest;
 import com.itrosys.cycle_engine.dto.OrderRequest;
 import com.itrosys.cycle_engine.dto.PaymentVerificationRequest;
 import com.itrosys.cycle_engine.entity.*;
@@ -16,25 +15,29 @@ import jakarta.transaction.Transactional;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Service
 public class PaymentService {
     private static final Logger logger = LoggerFactory.getLogger(PaymentService.class);
+    private static final double DISCOUNT_PERCENTAGE = 0.05; // 5% discount
 
     private final PaymentOrderRepository paymentOrderRepository;
     private final UserRepository userRepository;
     private final AddressRepository addressRepository;
-    private final OrderDetailsRepository orderDetailsRepository;
-    private final OrderItemRepository orderItemRepository;
+    private final CartRepository cartRepository;
+    private final OrderRepository orderRepository;
+    private final SpecificationsRepository specificationsRepository;
     private RazorpayClient razorpayClient;
 
     @Value("${razorpay.key.id}")
@@ -44,94 +47,170 @@ public class PaymentService {
     private String razorpayKeySecret;
 
     public PaymentService(PaymentOrderRepository paymentOrderRepository,
-                          UserRepository userRepository,
-                          AddressRepository addressRepository,
-                          OrderDetailsRepository orderDetailsRepository,
-                          OrderItemRepository orderItemRepository) {
+            UserRepository userRepository,
+            AddressRepository addressRepository,
+            CartRepository cartRepository,
+            OrderRepository orderRepository,
+            SpecificationsRepository specificationsRepository) {
         this.paymentOrderRepository = paymentOrderRepository;
         this.userRepository = userRepository;
         this.addressRepository = addressRepository;
-        this.orderDetailsRepository = orderDetailsRepository;
-        this.orderItemRepository = orderItemRepository;
+        this.cartRepository = cartRepository;
+        this.orderRepository = orderRepository;
+        this.specificationsRepository = specificationsRepository;
     }
 
     @PostConstruct
     public void init() throws RazorpayException {
         this.razorpayClient = new RazorpayClient(razorpayKeyId, razorpayKeySecret);
     }
+
+    @Transactional
     public Map<String, Object> createOrder(OrderRequest orderRequest) {
         try {
+            // Find user and address
             User user = userRepository.findById(orderRequest.getUserId())
                     .orElseThrow(() -> new PaymentException("User not found"));
 
-            System.out.println("Address ID: " + orderRequest.getAddressId());
-            Address address = addressRepository.findById(orderRequest.getAddressId()) // Fetch full entity
+            Address address = addressRepository.findById(orderRequest.getAddressId())
                     .orElseThrow(() -> new PaymentException("Address not found"));
 
-            System.out.println("Address: found");
-            System.out.println("start the crate orderDetails " );
-            OrderDetails orderDetails = new OrderDetails();
-            orderDetails.setUser(user);
-            orderDetails.setOrderDate(LocalDateTime.now(ZoneId.of("Asia/Kolkata")));
-            
-            // Calculate subtotal, GST, and final amount
-            double subtotal = orderRequest.calculateTotalAmount(orderRequest.getItems());
-            double gst = orderRequest.calculateGST(subtotal);
-            double shippingCost = orderRequest.getShippingCost();
-            double finalAmount = subtotal + gst + shippingCost;
-            
-            // Set all the amounts
-            orderDetails.setSubtotal(subtotal);
-            orderDetails.setGstAmount(gst);
-            orderDetails.setShippingCost(shippingCost);
-            orderDetails.setTotalAmount(finalAmount);
-            
-            orderDetails.setStatus(OrderStatus.Pending);
-            orderDetails.setAddress(address);
+            // Find all carts
+            List<Cart> carts = cartRepository.findAllById(orderRequest.getCartIds());
+            if (carts.isEmpty()) {
+                throw new PaymentException("No carts found");
+            }
 
-            // Initialize items list
-            orderDetails.setItems(new ArrayList<>());
-            System.out.println("orderDetails items start initializing ");
-            if (orderRequest.getItems() != null) {
-                for (OrderItemRequest itemRequest : orderRequest.getItems()) {
-                    OrderItem item = new OrderItem();
-                    BeanUtils.copyProperties(itemRequest, item);
-                    item.setOrderDetails(orderDetails);
-                    item.setTotalPrice(itemRequest.calculateItemTotal());
-                    orderDetails.getItems().add(item);
+            List<Orders> orders = new ArrayList<>();
+            BigDecimal totalSubtotal = BigDecimal.ZERO;
+
+            // Create an order for each cart
+            for (Cart cart : carts) {
+                Orders order = new Orders();
+                order.setUser(user);
+                order.setAddress(address);
+                order.setOrderDate(LocalDateTime.now(ZoneId.of("Asia/Kolkata")));
+                order.setStatus(OrderStatus.Pending);
+
+                // Set cart details
+                order.setBrand(cart.getBrand().getBrandName());
+                order.setQuantity(cart.getQuantity());
+                order.setThumbnail(cart.getThumbnail());
+
+                // Calculate prices for all items in the cart
+                BigDecimal cartItemsTotal = BigDecimal.ZERO;
+                for (CartItem cartItem : cart.getCartItems()) {
+                    Item item = cartItem.getItem();
+                    cartItemsTotal = cartItemsTotal.add(item.getPrice());
                 }
+                
+                // Set unit price as sum of all items' prices
+                order.setUnitPrice(cartItemsTotal.doubleValue());
+                
+                // Calculate subtotal (total price * quantity)
+                BigDecimal subtotal = cartItemsTotal.multiply(BigDecimal.valueOf(cart.getQuantity()));
+                totalSubtotal = totalSubtotal.add(subtotal);
+                order.setSubtotal(subtotal.doubleValue());
+
+                // Create and set specifications from all cart items
+                if (!cart.getCartItems().isEmpty()) {
+                    Specifications specs = new Specifications();
+                    // Initialize with "Not Selected"
+                    specs.setFrame("Not Selected");
+                    specs.setHandlebar("Not Selected");
+                    specs.setSeating("Not Selected");
+                    specs.setWheel("Not Selected");
+                    specs.setBrakes("Not Selected");
+                    specs.setTyre("Not Selected");
+                    specs.setChainAssembly("Not Selected");
+                    
+                    // Update specifications from all items in the cart
+                    for (CartItem cartItem : cart.getCartItems()) {
+                        Item currentItem = cartItem.getItem();
+                        switch (currentItem.getItemType().toLowerCase()) {
+                            case "frame":
+                                specs.setFrame(currentItem.getItemName());
+                                break;
+                            case "handlebar":
+                                specs.setHandlebar(currentItem.getItemName());
+                                break;
+                            case "seating":
+                                specs.setSeating(currentItem.getItemName());
+                                break;
+                            case "wheel":
+                                specs.setWheel(currentItem.getItemName());
+                                break;
+                            case "brakes":
+                                specs.setBrakes(currentItem.getItemName());
+                                break;
+                            case "tyre":
+                                specs.setTyre(currentItem.getItemName());
+                                break;
+                            case "chain assembly":
+                                specs.setChainAssembly(currentItem.getItemName());
+                                break;
+                            default:
+                                throw new IllegalArgumentException("Unknown ItemType: " + currentItem.getItemType());
+                        }
+                    }
+                    specs.setOrder(order); // Associate specifications with order
+                    order.setSpecifications(specs);
+                }
+
+                orders.add(order);
             }
-            System.out.println("orderDetails items end initializing ");
 
-            // Save orderDetails before using its ID
-            orderDetails = orderDetailsRepository.save(orderDetails);
-            System.out.println("orderDetails saved with ID: " + orderDetails.getOrderId());
-            logger.info("Order saved with ID: {}", orderDetails.getOrderId());
+            // Calculate final amounts using BigDecimal for precision
+            BigDecimal discountAmount = orderRequest.isDiscountApplied() 
+                ? totalSubtotal.multiply(BigDecimal.valueOf(DISCOUNT_PERCENTAGE)).setScale(2, RoundingMode.HALF_UP)
+                : BigDecimal.ZERO;
+            
+            BigDecimal subtotalAfterDiscount = totalSubtotal.subtract(discountAmount);
+            BigDecimal gstAmount = calculateGST(subtotalAfterDiscount);
+            BigDecimal shippingCost = BigDecimal.valueOf(orderRequest.getShippingCost());
+            BigDecimal finalAmount = subtotalAfterDiscount.add(gstAmount).add(shippingCost);
 
-            // Log items
-            for (OrderItemRequest item : orderRequest.getItems()) {
-                logger.info("Item: Brand={} Quantity={}", item.getBrand(), item.getQuantity());
+            // Update all orders with the calculated amounts
+            for (Orders order : orders) {
+                BigDecimal orderSubtotal = BigDecimal.valueOf(order.getSubtotal());
+                BigDecimal ratio = orderSubtotal.divide(totalSubtotal, 10, RoundingMode.HALF_UP);
+                
+                // Calculate individual order amounts
+                BigDecimal orderDiscountAmount = discountAmount.multiply(ratio).setScale(2, RoundingMode.HALF_UP);
+                BigDecimal orderGstAmount = gstAmount.multiply(ratio).setScale(2, RoundingMode.HALF_UP);
+                BigDecimal orderShippingCost = shippingCost.divide(BigDecimal.valueOf(orders.size()), 2, RoundingMode.HALF_UP);
+                BigDecimal orderTotalAmount = finalAmount.multiply(ratio).setScale(2, RoundingMode.HALF_UP);
+
+                order.setDiscountAmount(orderDiscountAmount.doubleValue());
+                order.setGstAmount(orderGstAmount.doubleValue());
+                order.setShippingCost(orderShippingCost.doubleValue());
+                order.setTotalAmount(orderTotalAmount.doubleValue());
             }
-            System.out.println("items loged ");
-            System.out.println("start the createRazorpayOrder ");
 
-            // Use the final amount (including GST and shipping) for payment
-            Order razorpayOrder = createRazorpayOrder(orderDetails.getTotalAmount());
-            System.out.println("createRazorpayOrder end ");
-            System.out.println("start the savePaymentOrder ");  
-            savePaymentOrder(razorpayOrder, orderDetails);
-            System.out.println("savePaymentOrder end ");
-            System.out.println("start the generateOrderResponse ");
-            return generateOrderResponse(razorpayOrder, orderDetails);
+            // Save all orders with their specifications
+            List<Orders> savedOrders = orderRepository.saveAll(orders);
+
+            // Create Razorpay order
+            Order razorpayOrder = createRazorpayOrder(finalAmount.doubleValue());
+            savePaymentOrder(razorpayOrder, savedOrders.get(0).getOrderId());
+
+            // Delete all carts after successful order creation
+            cartRepository.deleteAllById(orderRequest.getCartIds());
+
+            return generateOrderResponse(razorpayOrder, savedOrders);
+
         } catch (Exception e) {
             logger.error("Error creating order: {}", e.getMessage());
-            throw new PaymentException("Order creation failed " + e);
+            throw new PaymentException("Order creation failed: " + e.getMessage());
         }
+    }
+
+    private BigDecimal calculateGST(BigDecimal amount) {
+        return amount.multiply(BigDecimal.valueOf(0.18)).setScale(2, RoundingMode.HALF_UP); // 18% GST
     }
 
     private Order createRazorpayOrder(Double totalAmount) throws RazorpayException {
         JSONObject orderRequestJson = new JSONObject();
-        // Convert amount to paise and ensure it's an integer
         int amountInPaise = (int) Math.round(totalAmount * 100);
         orderRequestJson.put("amount", amountInPaise);
         orderRequestJson.put("currency", "INR");
@@ -140,26 +219,45 @@ public class PaymentService {
         return razorpayClient.orders.create(orderRequestJson);
     }
 
-    private void savePaymentOrder(Order razorpayOrder, OrderDetails orderDetails) {
-        PaymentOrder newOrder = new PaymentOrder();
-        newOrder.setRazorpayOrderId(razorpayOrder.get("id"));
-        newOrder.setAmount(orderDetails.getTotalAmount());
-        newOrder.setCurrency(razorpayOrder.get("currency"));
-        newOrder.setStatus("CREATED");
-        newOrder.setOrderId(orderDetails.getOrderId());
-        paymentOrderRepository.save(newOrder);
+    private void savePaymentOrder(Order razorpayOrder, Long orderId) {
+        PaymentOrder paymentOrder = new PaymentOrder();
+        paymentOrder.setRazorpayOrderId(razorpayOrder.get("id"));
+        paymentOrder.setOrderId(orderId);
+        paymentOrder.setAmount(Double.valueOf(razorpayOrder.get("amount").toString()) / 100);
+        paymentOrder.setCurrency(razorpayOrder.get("currency"));
+        paymentOrder.setStatus("CREATED");
+        paymentOrderRepository.save(paymentOrder);
     }
 
-    private Map<String, Object> generateOrderResponse(Order razorpayOrder, OrderDetails orderDetails) {
+    private Map<String, Object> generateOrderResponse(Order razorpayOrder, List<Orders> orders) {
         Map<String, Object> response = new HashMap<>();
+        
+        // Razorpay order details
         response.put("orderId", razorpayOrder.get("id"));
         response.put("amount", razorpayOrder.get("amount"));
         response.put("currency", razorpayOrder.get("currency"));
         response.put("status", razorpayOrder.get("status"));
-        response.put("orderDetailsId", orderDetails.getOrderId());
-        response.put("subtotal", orderDetails.getSubtotal());
-        response.put("gstAmount", orderDetails.getGstAmount());
-        response.put("shippingCost", orderDetails.getShippingCost());
+        response.put("orderIds", orders.stream().map(Orders::getOrderId).toList());
+
+        // Calculate totals from all orders
+        BigDecimal totalSubtotal = BigDecimal.ZERO;
+        BigDecimal totalDiscountAmount = BigDecimal.ZERO;
+        BigDecimal totalGstAmount = BigDecimal.ZERO;
+        BigDecimal totalShippingCost = BigDecimal.ZERO;
+
+        for (Orders order : orders) {
+            totalSubtotal = totalSubtotal.add(BigDecimal.valueOf(order.getSubtotal()));
+            totalDiscountAmount = totalDiscountAmount.add(BigDecimal.valueOf(order.getDiscountAmount()));
+            totalGstAmount = totalGstAmount.add(BigDecimal.valueOf(order.getGstAmount()));
+            totalShippingCost = totalShippingCost.add(BigDecimal.valueOf(order.getShippingCost()));
+        }
+
+        // Add totals to response
+        response.put("subtotal", totalSubtotal.setScale(2, RoundingMode.HALF_UP).doubleValue());
+        response.put("discountAmount", totalDiscountAmount.setScale(2, RoundingMode.HALF_UP).doubleValue());
+        response.put("gstAmount", totalGstAmount.setScale(2, RoundingMode.HALF_UP).doubleValue());
+        response.put("shippingCost", totalShippingCost.setScale(2, RoundingMode.HALF_UP).doubleValue());
+        
         return response;
     }
 
@@ -188,8 +286,7 @@ public class PaymentService {
             Map<String, String> params = Map.of(
                     "razorpay_order_id", request.getOrderId(),
                     "razorpay_payment_id", request.getPaymentId(),
-                    "razorpay_signature", request.getSignature()
-            );
+                    "razorpay_signature", request.getSignature());
             Utils.verifyPaymentSignature(new JSONObject(params), razorpayKeySecret);
             return true;
         } catch (Exception e) {
@@ -198,9 +295,9 @@ public class PaymentService {
     }
 
     private void updateOrderStatus(Long orderId, OrderStatus status) {
-        OrderDetails orderDetails = orderDetailsRepository.findById(orderId)
-                .orElseThrow(() -> new PaymentException("Order details not found"));
-        orderDetails.setStatus(status);
-        orderDetailsRepository.save(orderDetails);
+        Orders order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new PaymentException("Order not found"));
+        order.setStatus(status);
+        orderRepository.save(order);
     }
 }

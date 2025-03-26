@@ -4,30 +4,18 @@ import { FaLongArrowAltLeft } from "react-icons/fa";
 import { RxCrossCircled } from "react-icons/rx";
 import { MdDelete } from "react-icons/md";
 import { useNavigate } from "react-router-dom";
-import logo from "../../assets/logo.png";
-import { useAuth } from "../../hooks/useAuth";
+
 import { useCart } from "../../context/CartContext";
 import { cartAPI, compareAPI } from "../../utils/api";
 import React from "react";
 import Address from "../../pages/address/Address";
-import axios from "axios";
-import { getAuthHeader } from '../../utils/auth';
-
-// Loading Overlay Component
-// const LoadingOverlay = ({ message }) => (
-//   <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-//     <div className="bg-white rounded-lg p-6 flex flex-col items-center gap-4">
-//       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500"></div>
-//       <p className="text-lg font-semibold">{message}</p>
-//     </div>
-//   </div>
-// );
+import { loadRazorpay, createOrder, initializeRazorpayCheckout } from "../../utils/payment";
 
 const Cart = () => {
-  const { userName, userEmail, userId } = useAuth();
   const { updateCartCount } = useCart();
   const [cart, setCart] = useState([]);
   const [compareItems, setCompareItems] = useState([]);
+  const [selectedItems, setSelectedItems] = useState(new Set());
   const [totalPrice, setTotalPrice] = useState(0);
   const [totalItemsQuantity, setTotalItemsQuantity] = useState(0);
   const [promoCode, setPromoCode] = useState("");
@@ -78,16 +66,24 @@ const Cart = () => {
   },[]);
 
   useEffect(() => {
-    // Calculate total price for all items in the cart (initial and after discount)
-    const calculateTotalPrice = () => {
-      // Calculate subtotal
-      const newSubtotal = cart.reduce((total, cartItem) => total + cartItem.totalPartsPrice, 0);
-      setSubtotal(newSubtotal);
-
-      // Start with subtotal
-      let total = newSubtotal;
-
-      // Apply discount if promo code is active
+    const calculateSelectedPrices = () => {
+      const selectedSubtotal = cart.reduce((total, item) => {
+        if (selectedItems.has(item.cartId)) {
+          return total + item.totalPartsPrice;
+        }
+        return total;
+      }, 0);
+      
+      setSubtotal(selectedSubtotal);
+      
+      if (selectedSubtotal >= 10000 || selectedSubtotal === 0) {
+        setShippingCost(0);
+      } else if (shippingCost === 0) {
+        setShippingCost(200);
+      }
+      
+      let total = selectedSubtotal;
+      
       if (discountApplied) {
         const discount = total * 0.05;
         setDiscountAmount(discount);
@@ -95,23 +91,28 @@ const Cart = () => {
       } else {
         setDiscountAmount(0);
       }
-
-      // Calculate GST (18%) on the discounted amount
+      
       const gst = total * 0.18;
       setGstAmount(gst);
       total += gst;
-
-      // Add shipping cost to total only if subtotal is less than 10000
-      if (newSubtotal < 10000) {
+      
+      if (selectedSubtotal > 0) {
         total += shippingCost;
       }
-
+      
       setTotalPrice(total);
+      
+      const selectedQuantity = cart.reduce((total, item) => {
+        if (selectedItems.has(item.cartId)) {
+          return total + item.quantity;
+        }
+        return total;
+      }, 0);
+      setTotalItemsQuantity(selectedQuantity);
     };
-
-    calculateTotalPrice();
-    setTotalItemsQuantity(getTotalQuantity());
-  }, [cart, discountApplied, shippingCost, getTotalQuantity]);
+    
+    calculateSelectedPrices();
+  }, [cart, selectedItems, discountApplied, shippingCost]);
 
   const handleIncrement = async (item) => {
     try {
@@ -179,138 +180,76 @@ const Cart = () => {
     navigate(-1);
   };
 
-  const loadRazorpay = async () => {
-    const script = document.createElement("script");
-    script.src = "https://checkout.razorpay.com/v1/checkout.js";
-    script.async = true;
-    document.body.appendChild(script);
-
-    return new Promise((resolve) => {
-      script.onload = () => {
-        resolve(true);
-      };
-      script.onerror = () => {
-        resolve(false);
-      };
-    });
-  };
-
   const handleAddressSelect = (address) => {
     setSelectedAddress(address);
     setShowAddressModal(false);
     // After selecting address, proceed with order creation
-    createOrder(address);
+    handleCreateOrder(address);
   };
 
-  // Modified createOrder function with loading states
-  const createOrder = async (address) => {
+  const handleCreateOrder = async (address) => {
     setIsLoading(true);
     setLoadingMessage("Creating your order...");
     try {
+      // Prepare cart-specific order request
       const orderRequest = {
-        userId: userId,
         addressId: address.addressId,
         shippingCost: shippingCost,
-        items: cart.map(item => ({
-          brand: item.brand,
-          quantity: item.quantity,
-          unitPrice: item.partPrice,
-          frame: item.parts.Frame.itemName,
-          handlebar: item.parts.Handlebar.itemName,
-          seating: item.parts.Seating.itemName,
-          wheel: item.parts.Wheel.itemName,
-          brakes: item.parts.Brakes.itemName,
-          tyre: item.parts.Tyre.itemName,
-          chainAssembly: item.parts["Chain Assembly"].itemName
-        }))
+        cartIds: Array.from(selectedItems),
+        discountApplied: discountApplied
       };
 
-      const response = await axios.post("http://localhost:8080/payments/create-order", orderRequest, getAuthHeader());
-      
-      if (response.data.orderId) {
-        setLoadingMessage("Initializing payment gateway...");
-        await handleCheckout(response.data);
-      } else {
-        throw new Error("Failed to create order");
-      }
+      // Create order using payment utility
+      const orderData = await createOrder(orderRequest);
+      setLoadingMessage("Initializing payment gateway...");
+      await handlePaymentCheckout(orderData);
     } catch (error) {
       setIsLoading(false);
       setLoadingMessage("");
-      console.error("Error creating order:", error);
       toast.error(error.response?.data?.message || "Failed to create order. Please try again later.");
     }
   };
 
-  // Modified handleCheckout function with better error handling
-  const handleCheckout = async (orderData) => {
+  const handlePaymentCheckout = async (orderData) => {
     try {
       const isLoaded = await loadRazorpay();
       if (!isLoaded) {
         throw new Error("Failed to load payment gateway");
       }
 
-      const options = {
-        key: "rzp_test_5C7srwxYlDtKK8",
-        amount: orderData.amount || 100,
-        currency: orderData.currency || "INR",
-        name: "Cycle Pricing Engine",
-        description: "Purchase from Cycle Pricing Engine",
-        image: logo,
-        order_id: orderData.orderId,
-        handler: async function (response) {
-          setLoadingMessage("Verifying payment...");
-          try {
-            const verificationResponse = await axios.post(
-              "http://localhost:8080/payments/verify-payment",
-              {
-                orderId: response.razorpay_order_id,
-                paymentId: response.razorpay_payment_id,
-                signature: response.razorpay_signature,
-              },
-              getAuthHeader()
-            );
-
-            if (verificationResponse.data.success) {
-              await cartAPI.clearCart(userName);
-              updateCartCount(0);
-              setIsLoading(false);
-              setLoadingMessage("");
-              toast.success("Payment Successful! Order has been Confirmed.");
-              navigate("/orders");
-            } else {
-              throw new Error("Payment verification failed");
-            }
-          } catch (error) {
+      const razorpay = initializeRazorpayCheckout({
+        orderData,
+        callbacks: {
+          onPaymentStart: () => {
+            setLoadingMessage("Verifying payment...");
+          },
+          onPaymentSuccess: async () => {
+            await cartAPI.clearCart();
+            updateCartCount(0);
             setIsLoading(false);
             setLoadingMessage("");
-            console.error("Payment verification failed:", error);
+            toast.success("Payment Successful! Order has been Confirmed.");
+            navigate("/orders");
+          },
+          onPaymentError: () => {
+            setIsLoading(false);
+            setLoadingMessage("");
             toast.error("Payment verification failed. Please contact support if amount was deducted.");
-          }
-        },
-        prefill: {
-          name: userName,
-          email: userEmail,
-        },
-        theme: {
-          color: "#28544B",
-        },
-        modal: {
-          ondismiss: function() {
+          },
+          onPaymentFailed: () => {
+            setIsLoading(false);
+            setLoadingMessage("");
+            toast.error("Payment failed. Please try again.");
+          },
+          onModalClose: () => {
             setIsLoading(false);
             setLoadingMessage("");
             toast.error("Payment cancelled. Please try again.");
           }
         }
-      };  
-
-      const rzp = new window.Razorpay(options);
-      // eslint-disable-next-line no-unused-vars
-      rzp.on('payment.failed', function (response) {
-        setIsLoading(false);
-        setLoadingMessage("");
-        toast.error("Payment failed. Please try again.");
       });
-      rzp.open();
+
+      razorpay.open();
     } catch (error) {
       setIsLoading(false);
       setLoadingMessage("");
@@ -324,7 +263,47 @@ const Cart = () => {
 
   // Add handleOrder function
   const handleOrder = () => {
+    if (selectedItems.size === 0) {
+      toast.error("Please select at least one item to checkout");
+      return;
+    }
+    
+    // Calculate total for selected items
+    const selectedTotal = cart.reduce((total, item) => {
+      if (selectedItems.has(item.cartId)) {
+        return total + item.totalPartsPrice;
+      }
+      return total;
+    }, 0);
+    
+    if (selectedTotal === 0) {
+      toast.error("Please select items to proceed");
+      return;
+    }
+    
     setShowAddressModal(true);
+  };
+
+  const handleItemSelect = (cartId) => {
+    setSelectedItems(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(cartId)) {
+        newSet.delete(cartId);
+      } else {
+        newSet.add(cartId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleSelectAll = (checked) => {
+    if (checked) {
+      // Select all items that are in the cart
+      setSelectedItems(new Set(cart.map(item => item.cartId)));
+    } else {
+      // Deselect all items
+      setSelectedItems(new Set());
+    }
   };
 
   // Component mapping for estimate details
@@ -338,32 +317,48 @@ const Cart = () => {
     { type: "Chain Assembly", key: "Chain Assembly" },
   ];
 
-  const handleAddToCompare =async (id) => {
+  const handleAddToCompare = async (id) => {
+    try {
+      // Check if item is already in comparison
+      const existingItems = await compareAPI.getAllComparisons();
+      if (existingItems.some(item => item.cartId === id)) {
+        toast.error("Item already in comparison list");
+        return;
+      }
+      
+      // Check if comparison limit is reached (max 3 items)
+      if (existingItems.length >= 4) {
+        toast.error("You can compare up to 4 items only");
+        return;
+      }
 
-     const cart = await compareAPI.addToCompare(id, userId);
-     console.log(cart);
-    // if (compareItems.some(item => item.cartId === cartItem.cartId)) {
-    //   toast.error("Item already in comparison list");
-    //   return;
-    // }
-    // if (compareItems.length >= 3) {
-    //   toast.error("You can compare up to 3 items only");
-    //   return;
-    // }
-    // setCompareItems([...compareItems, cartItem]);
-    // toast.success("Added to comparison list");
+      // Add item to comparison - userId is handled internally now
+      await compareAPI.addToCompare(id);
+      const updatedItems = await compareAPI.getAllComparisons();
+      setCompareItems(updatedItems);
+      toast.success("Added to comparison list");
+    } catch (error) {
+      console.error("Error adding item to compare:", error);
+      toast.error("Failed to add item to comparison");
+    }
   };
 
-  const handleViewCompare =async () => {
-    
-    const response = await compareAPI.getAllComparisons();
-    setCompareItems(response);
-    if (compareItems.length < 2) {
-      toast.error("Add at least 2 items to compare");
-      return;
+  const handleViewCompare = async () => {
+    try {
+      const response = await compareAPI.getAllComparisons();
+      setCompareItems(response);
+      
+      if (response.length < 2) {
+        toast.error("Add at least 2 items to compare");
+        return;
+      }
+
+      // Navigate to compare page
+      navigate('/compare');
+    } catch (error) {
+      console.error("Error viewing comparisons:", error);
+      toast.error("Failed to load comparison items");
     }
-    // TODO: Navigate to compare page or show compare modal
-    console.log("Compare items:", compareItems);
   };
 
   return (
@@ -404,71 +399,128 @@ const Cart = () => {
                   </h2>
                 </div>
                 
-                {/* Table Headers - Hide on Mobile and Small Tablets */}
-                <div className="hidden lg:flex mt-4 mb-2">
-                  <h3 className="font-semibold text-gray-600 text-xs uppercase w-2/5 pl-28">
-                    Product Details
-                  </h3>
-                  <h3 className="font-semibold text-center text-gray-600 text-xs uppercase w-1/5">
-                    Quantity
-                  </h3>
-                  <h3 className="font-semibold text-center text-gray-600 text-xs uppercase w-1/5">
-                    Price
-                  </h3>
-                  <h3 className="font-semibold text-center text-gray-600 text-xs uppercase w-1/5">
-                    Total
-                  </h3>
-                </div>
-
-                {/* Products container */}
+                {/* Products container with sticky headers */}
                 <div className="max-h-[calc(100vh-250px)] sm:max-h-[calc(100vh-280px)] overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+                  {/* Sticky Headers */}
+                  <div className="hidden lg:flex py-3 border-b sticky top-0 bg-white z-10">
+                    <div className="w-[50%] pl-4">
+                      <div className="flex items-center gap-6">
+                        <span className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                          checked={selectedItems.size === cart.length}
+                          onChange={(e) => handleSelectAll(e.target.checked)}
+                        />
+                        <span className="font-semibold text-center text-gray-600 text-xs uppercase">Select All</span>
+                        </span>
+                        <h3 className="font-semibold text-gray-600 text-xs uppercase">Product Details</h3>
+                      </div>
+                    </div>
+                    <div className="w-[50%] grid grid-cols-3">
+                      <h3 className="font-semibold text-center text-gray-600 text-xs uppercase">Quantity</h3>
+                      <h3 className="font-semibold text-center text-gray-600 text-xs uppercase">Price</h3>
+                      <h3 className="font-semibold text-center text-gray-600 text-xs uppercase">Total</h3>
+                    </div>
+                  </div>  
+
+                  {/* Cart Items */}
                   {cart.map((cartItem, index) => (
                     <div
-                      className="flex flex-col lg:flex-row items-start lg:items-center hover:bg-gray-50 py-4 border-b gap-3 lg:gap-0"
+                      className="flex flex-col lg:flex-row items-start lg:items-center py-4 border-b gap-3 lg:gap-0"
                       key={index}
                     >
                       {/* Product Info Section */}
-                      <div className="flex w-full lg:w-2/5">
+                      <div className="flex w-full lg:w-[50%] hover:bg-gray-50 rounded-lg p-2">
+                        {/* Checkbox */}
+                        <div className="flex items-center mr-2">
+                          <input
+                            type="checkbox"
+                            className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                            checked={selectedItems.has(cartItem.cartId)}
+                            onChange={() => handleItemSelect(cartItem.cartId)}
+                          />
+                        </div>
+                        
+                        {/* Product Image */}
                         <div
-                          className="w-24 sm:w-28 cursor-pointer flex-shrink-0"
+                          className="w-20 h-20 sm:w-24 sm:h-24 cursor-pointer flex-shrink-0"
                           onClick={() => setSelectedItem(cartItem)}
                         >
                           <img 
-                            className="h-24 sm:h-28 w-full object-cover rounded-lg shadow-sm" 
+                            className="h-full w-full object-cover rounded-lg shadow-sm" 
                             src={cartItem.thumbnail} 
                             alt={`${cartItem.brand} Cycle`} 
                           />
                         </div>
-                        <div className="flex flex-col justify-between ml-3 sm:ml-4 flex-grow">
-                          <span className="font-bold text-base sm:text-lg">
-                            {cartItem.brand} Cycle
-                          </span>
-                          <span className="text-gray-600 text-sm mt-1 line-clamp-2">
-                            {cartItem.parts.Frame.itemName},
-                            {cartItem.parts.Handlebar.itemName},
-                            {cartItem.parts.Seating.itemName},
-                          </span>
-                          <div className="flex flex-col lg:flex-row items-start lg:items-center gap-2 lg:gap-4 mt-2">
+                        
+                        {/* Product Details */}
+                        <div className="flex flex-col ml-3 sm:ml-4 flex-grow">
+                          <div className="flex-grow">
+                            <span className="font-bold text-sm sm:text-base block mb-1">
+                              {cartItem.brand} Cycle
+                            </span>
+                            <span className="text-gray-600 text-xs sm:text-sm line-clamp-2">
+                              {cartItem.parts.Frame.itemName},
+                              {cartItem.parts.Handlebar.itemName},
+                              {cartItem.parts.Seating.itemName}
+                            </span>
+                          </div>
+                          
+                          {/* Action Buttons */}
+                          <div className="flex items-center gap-2 mt-2">
                             <button
-                              className="font-semibold hover:text-red-500 text-gray-500 text-sm w-full lg:w-auto flex items-start gap-1 justify-center lg:justify-start"
+                              className="font-medium text-gray-500 text-xs sm:text-sm flex items-center gap-1 hover:text-red-500 transition-colors"
                               onClick={() => handleRemoveOneCart(cartItem.cartId)}
                             >
-                              <RxCrossCircled size={16} />
+                              <RxCrossCircled className="text-base sm:text-lg" />
                               Remove
                             </button>
                             <button
-                              className="font-semibold hover:text-blue-500 text-gray-500 text-sm w-full lg:w-auto flex items-center gap-1 justify-center lg:justify-start"
+                              className="font-medium text-gray-500 text-xs sm:text-sm flex items-center gap-1 hover:text-blue-500 transition-colors whitespace-nowrap"
                               onClick={() => handleAddToCompare(cartItem.cartId)}
                             >
-                              <span className="text-lg">+</span>
+                              <span className="text-base sm:text-lg">+</span>
                               Add to Compare
                             </button>
                           </div>
                         </div>
                       </div>
 
+                      {/* Desktop Price and Quantity Section */}
+                      <div className="hidden lg:grid grid-cols-3 w-[50%]">
+                        <div className="flex items-center justify-center">
+                          <div className="flex items-center gap-0">
+                            <button
+                              className="border h-8 w-8 rounded-full flex items-center justify-center bg-white shadow-sm hover:bg-gray-50 active:bg-gray-100 text-gray-600"
+                              onClick={() => handleDecrement(cartItem)}
+                              aria-label={cartItem.quantity === 1 ? "Remove item" : "Decrease quantity"}
+                            >
+                              {cartItem.quantity === 1 ? (
+                                <MdDelete className="text-red-500" size={16} />
+                              ) : (
+                                <span className="text-gray-600">-</span>
+                              )}
+                            </button>
+                            <span className="w-8 text-center font-medium">{cartItem.quantity}</span>
+                            <button
+                              className="border h-8 w-8 rounded-full flex items-center justify-center bg-white shadow-sm hover:bg-gray-50 active:bg-gray-100 text-gray-600"
+                              onClick={() => handleIncrement(cartItem)}
+                            >
+                              +
+                            </button>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-center">
+                          <span className="font-semibold">₹{cartItem.partPrice.toFixed(2)}</span>
+                        </div>
+                        <div className="flex items-center justify-center">
+                          <span className="font-semibold">₹{cartItem.totalPartsPrice.toFixed(2)}</span>
+                        </div>
+                      </div>
+
                       {/* Mobile and Tablet Price and Quantity Section */}
-                      <div className="flex flex-col w-full lg:hidden gap-3 bg-gray-50 p-3 rounded-lg">
+                      <div className="flex flex-col w-full lg:hidden gap-3 bg-gray-50 p-3 rounded-lg mt-3">
                         <div className="flex justify-between items-center">
                           <span className="text-gray-600 text-sm sm:text-base">Unit Price:</span>
                           <span className="font-semibold text-sm sm:text-base">₹{cartItem.partPrice.toFixed(2)}</span>
@@ -477,7 +529,7 @@ const Cart = () => {
                           <span className="text-gray-600 text-sm sm:text-base">Quantity:</span>
                           <div className="flex items-center gap-4">
                             <button
-                              className="border h-7 w-7 sm:h-9 sm:w-9 rounded-full flex items-center justify-center bg-white shadow-sm hover:bg-gray-50 active:bg-gray-100"
+                              className="border h-7 w-7 sm:h-8 sm:w-8 rounded-full flex items-center justify-center bg-white shadow-sm hover:bg-gray-50 active:bg-gray-100"
                               onClick={() => handleDecrement(cartItem)}
                               aria-label={cartItem.quantity === 1 ? "Remove item" : "Decrease quantity"}
                             >
@@ -489,7 +541,7 @@ const Cart = () => {
                             </button>
                             <span className="w-8 text-center text-sm sm:text-base font-medium">{cartItem.quantity}</span>
                             <button
-                              className="border h-8 w-8 sm:h-9 sm:w-9 rounded-full flex items-center justify-center bg-white shadow-sm hover:bg-gray-50 active:bg-gray-100"
+                              className="border h-7 w-7 sm:h-8 sm:w-8 rounded-full flex items-center justify-center bg-white shadow-sm hover:bg-gray-50 active:bg-gray-100"
                               onClick={() => handleIncrement(cartItem)}
                             >
                               +
@@ -500,36 +552,6 @@ const Cart = () => {
                           <span className="text-gray-600 text-sm sm:text-base">Total:</span>
                           <span className="font-bold text-sm sm:text-base">₹{cartItem.totalPartsPrice.toFixed(2)}</span>
                         </div>
-                      </div>
-
-                      {/* Desktop Price and Quantity Section */}
-                      <div className="hidden lg:flex justify-between w-3/5">
-                        <div className="flex items-center justify-center w-1/3 gap-2">
-                          <button
-                            className="border h-8 w-8 rounded-full flex items-center justify-center bg-white shadow-sm hover:bg-gray-50 active:bg-gray-100 text-gray-600"
-                            onClick={() => handleDecrement(cartItem)}
-                            aria-label={cartItem.quantity === 1 ? "Remove item" : "Decrease quantity"}
-                          >
-                            {cartItem.quantity === 1 ? (
-                              <MdDelete className="text-red-500" size={16} />
-                            ) : (
-                              <span className="text-gray-600">-</span>
-                            )}
-                          </button>
-                          <span className="w-8 text-center font-medium">{cartItem.quantity}</span>
-                          <button
-                            className="border h-8 w-8 rounded-full flex items-center justify-center bg-white shadow-sm hover:bg-gray-50 active:bg-gray-100 text-gray-600"
-                            onClick={() => handleIncrement(cartItem)}
-                          >
-                            +
-                          </button>
-                        </div>
-                        <span className="text-center w-1/3 font-semibold">
-                          ₹{cartItem.partPrice.toFixed(2)}
-                        </span>
-                        <span className="text-center w-1/3 font-semibold">
-                          ₹{cartItem.totalPartsPrice.toFixed(2)}
-                        </span>
                       </div>
                     </div>
                   ))}

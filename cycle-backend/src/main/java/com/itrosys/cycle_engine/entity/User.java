@@ -3,6 +3,7 @@ package com.itrosys.cycle_engine.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Getter
@@ -27,6 +28,9 @@ public class User {
     @Column(name = "email", unique = true, nullable = false)
     private String email;
 
+    @Column(name ="register_date" ,nullable = false)
+    private LocalDateTime registerDate;
+
     @ManyToOne
     @JoinColumn(name = "role_id", nullable = false)
     private Role role;
@@ -35,5 +39,5 @@ public class User {
     private List<Address> addresses;
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<OrderDetails> orders;
+    private List<Orders> orders;
 }

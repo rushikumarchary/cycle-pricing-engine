@@ -1,26 +1,31 @@
 package com.itrosys.cycle_engine.service;
 
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.itrosys.cycle_engine.dto.CartRequest;
 import com.itrosys.cycle_engine.dto.CartResponse;
 import com.itrosys.cycle_engine.dto.QuantityCart;
-import com.itrosys.cycle_engine.entity.*;
+import com.itrosys.cycle_engine.entity.Brand;
+import com.itrosys.cycle_engine.entity.Cart;
+import com.itrosys.cycle_engine.entity.CartItem;
+import com.itrosys.cycle_engine.entity.CustomUserDetails;
+import com.itrosys.cycle_engine.entity.Item;
+import com.itrosys.cycle_engine.entity.User;
 import com.itrosys.cycle_engine.exception.BrandNotFound;
 import com.itrosys.cycle_engine.exception.CartNotFound;
 import com.itrosys.cycle_engine.repository.BrandRepository;
 import com.itrosys.cycle_engine.repository.CartRepository;
 import com.itrosys.cycle_engine.repository.ItemRepository;
 import com.itrosys.cycle_engine.repository.UserRepository;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
 
 @Service
 public class CartService {
@@ -104,6 +109,7 @@ public class CartService {
                 partDetails.put("itemId", item.getItemId());
                 partDetails.put("itemName", item.getItemName());
                 partDetails.put("price", item.getPrice());
+
 
                 parts.put(partType, partDetails);
                 partPrice = partPrice.add(item.getPrice());

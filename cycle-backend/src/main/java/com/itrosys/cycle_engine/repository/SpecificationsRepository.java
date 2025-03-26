@@ -1,9 +1,9 @@
 package com.itrosys.cycle_engine.repository;
 
-import com.itrosys.cycle_engine.entity.OrderItem;
+import com.itrosys.cycle_engine.entity.Specifications;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
-}
+public interface SpecificationsRepository extends JpaRepository<Specifications, Long> {
+} 

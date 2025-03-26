@@ -5,27 +5,14 @@ import lombok.Getter;
 import lombok.Setter;
 
 @Entity
+@Table(name = "specifications")
 @Getter
 @Setter
-public class OrderItem {
-
+public class Specifications {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
-    private String brand;
-
-    @Column(nullable = false)
-    private Integer quantity;
-
-    @Column(nullable = false)
-    private Double unitPrice;
-
-    @Column(nullable = false)
-    private Double totalPrice;
-
-    // Cycle Specifications
     @Column(nullable = false)
     private String frame;
 
@@ -47,7 +34,7 @@ public class OrderItem {
     @Column(nullable = false)
     private String chainAssembly;
 
-    @ManyToOne(cascade = CascadeType.PERSIST)
-    @JoinColumn(name = "order_id", referencedColumnName = "order_id", nullable = false)
-    private OrderDetails orderDetails;
-}
+    @OneToOne
+    @JoinColumn(name = "order_id")
+    private Orders order;
+} 

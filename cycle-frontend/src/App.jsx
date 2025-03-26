@@ -11,7 +11,7 @@ import SignUp from "./pages/signUp/SignUp";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AuthProvider from "./context/AuthContext";
 import { CartProvider } from "./context/CartContext";
-import { OrderProvider } from "./context/OrderContext";
+
 import Cart from "./pages/cart/Cart";
 import Orders from "./pages/cart/Orders";
 import ManageOrders from "./pages/orders/ManageOrders";
@@ -23,7 +23,7 @@ function App() {
     <AuthProvider>
       
         <CartProvider>
-          <OrderProvider>
+          
             <Router>
               <Routes>
                 {/* Auth routes outside of layout */}
@@ -72,7 +72,7 @@ function App() {
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Router>
-          </OrderProvider>
+    
         </CartProvider>
     </AuthProvider>
   );
