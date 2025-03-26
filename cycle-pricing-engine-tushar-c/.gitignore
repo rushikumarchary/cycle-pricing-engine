@@ -1,0 +1,28 @@
+# Ignore node_modules in all subdirectories
+node_modules/
+
+# Ignore package-lock.json and package.json in all subdirectories
+**/package-lock.json
+
+
+# Ignore Maven/Java build files in backend
+**/target/
+**/*.class
+**/*.jar
+**/*.war
+**/*.ear
+
+# Ignore system files
+.DS_Store
+Thumbs.db
+
+# Ignore IDE-specific files
+**/.idea/
+**/*.iml
+**/.vscode/
+**/.qodo
+
+# Ignore wrapper and build files
+**/.mvn/
+**/mvnw
+**/mvnw.cmd
