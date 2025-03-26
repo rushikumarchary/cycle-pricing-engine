@@ -224,8 +224,8 @@ const Cart = () => {
             setLoadingMessage("Verifying payment...");
           },
           onPaymentSuccess: async () => {
-            await cartAPI.clearCart();
-            updateCartCount(0);
+          
+            
             setIsLoading(false);
             setLoadingMessage("");
             toast.success("Payment Successful! Order has been Confirmed.");

@@ -75,9 +75,9 @@ const Orders = () => {
     // Filter orders based on search query
     const filtered = orders.filter(order => {
       const searchLower = searchQuery.toLowerCase();
-      return order.items.some(item => 
-        item.brand.toLowerCase().includes(searchLower) ||
-        item.frame.toLowerCase().includes(searchLower)
+      return (
+        order.brand.toLowerCase().includes(searchLower) ||
+        order.specifications.frame.toLowerCase().includes(searchLower)
       );
     });
     setFilteredOrders(filtered);
@@ -97,6 +97,8 @@ const Orders = () => {
         return 'bg-purple-100 text-purple-800';
       case 'delivered':
         return 'bg-gray-100 text-gray-800';
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
@@ -108,8 +110,8 @@ const Orders = () => {
   //   setShowAddress({});
   // };
 
-  const toggleItemDetails = (itemId) => {
-    setExpandedItemId(expandedItemId === itemId ? null : itemId);
+  const toggleItemDetails = (orderId) => {
+    setExpandedItemId(expandedItemId === orderId ? null : orderId);
   };
 
   const toggleAddress = (orderId) => {
@@ -192,41 +194,49 @@ const Orders = () => {
                 </div>
               </div>
 
-              {/* Items Summary */}
+              {/* Item Summary */}
               <div className="border-t border-b py-4">
                 <div className="space-y-2">
-                  {order.items.map((item) => (
-                    <div key={item.id}>
-                      <div className="flex justify-between items-center">
+                  <div>
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-4">
+                        <img
+                          src={order.thumbnail}
+                          alt={`${order.brand} cycle`}
+                          className="w-16 h-16 object-cover rounded-md"
+                          onError={(e) => {
+                            e.target.src = '/src/assets/default-cycle.webp';
+                            e.target.onerror = null;
+                          }}
+                        />
                         <button
-                          onClick={() => toggleItemDetails(item.id)}
+                          onClick={() => toggleItemDetails(order.orderId)}
                           className="flex items-center gap-2 font-medium text-indigo-600 hover:text-indigo-800"
                         >
-                          {/* <BsBoxSeam /> */}
                           <IoMdBicycle />
-                          {item.brand}
-                          {expandedItemId === item.id ? <FaChevronUp className="w-4 h-4" /> : <FaChevronDown className="w-4 h-4" />}
+                          {order.brand}
+                          {expandedItemId === order.orderId ? <FaChevronUp className="w-4 h-4" /> : <FaChevronDown className="w-4 h-4" />}
                         </button>
-                        <span className="text-gray-600">₹{(item.quantity * item.unitPrice).toFixed(2)}</span>
                       </div>
-                      
-                      {/* Collapsible Item Details */}
-                      <div className={`mt-2 ml-6 transition-all duration-300 ${expandedItemId === item.id ? 'block' : 'hidden'}`}>
-                        <div className="text-sm text-gray-600">
-                          <p>Quantity: {item.quantity} × ₹{item.unitPrice.toFixed(2)}</p>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 mt-2">
-                            <p><span className="font-medium">Frame:</span> {item.frame}</p>
-                            <p><span className="font-medium">Handlebar:</span> {item.handlebar}</p>
-                            <p><span className="font-medium">Seating:</span> {item.seating}</p>
-                            <p><span className="font-medium">Wheel:</span> {item.wheel}</p>
-                            <p><span className="font-medium">Brakes:</span> {item.brakes}</p>
-                            <p><span className="font-medium">Tyre:</span> {item.tyre}</p>
-                            <p><span className="font-medium">Chain Assembly:</span> {item.chainAssembly}</p>
-                          </div>
+                      <span className="text-gray-600">₹{(order.quantity * order.unitPrice).toFixed(2)}</span>
+                    </div>
+                    
+                    {/* Collapsible Item Details */}
+                    <div className={`mt-2 ml-6 transition-all duration-300 ${expandedItemId === order.orderId ? 'block' : 'hidden'}`}>
+                      <div className="text-sm text-gray-600">
+                        <p>Quantity: {order.quantity} × ₹{order.unitPrice.toFixed(2)}</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 mt-2">
+                          <p><span className="font-medium">Frame:</span> {order.specifications.frame}</p>
+                          <p><span className="font-medium">Handlebar:</span> {order.specifications.handlebar}</p>
+                          <p><span className="font-medium">Seating:</span> {order.specifications.seating}</p>
+                          <p><span className="font-medium">Wheel:</span> {order.specifications.wheel}</p>
+                          <p><span className="font-medium">Brakes:</span> {order.specifications.brakes}</p>
+                          <p><span className="font-medium">Tyre:</span> {order.specifications.tyre}</p>
+                          <p><span className="font-medium">Chain Assembly:</span> {order.specifications.chainAssembly}</p>
                         </div>
                       </div>
                     </div>
-                  ))}
+                  </div>
                 </div>
               </div>
 
@@ -244,6 +254,12 @@ const Orders = () => {
                   <span className="text-gray-600">Shipping:</span>
                   <span className="font-medium">₹{order.shippingCost.toFixed(2)}</span>
                 </div>
+                {order.discountAmount > 0 && (
+                  <div className="flex justify-between text-sm text-green-600">
+                    <span>Discount:</span>
+                    <span className="font-medium">-₹{order.discountAmount.toFixed(2)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-base font-bold pt-2 border-t">
                   <span>Grand Total:</span>
                   <span>₹{order.totalAmount.toFixed(2)}</span>

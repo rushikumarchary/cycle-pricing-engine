@@ -1,8 +1,9 @@
 package com.itrosys.cycle_engine.dto;
 
-import com.itrosys.cycle_engine.entity.Orders;
+import com.itrosys.cycle_engine.entity.*;
 import com.itrosys.cycle_engine.entity.Specifications;
 import com.itrosys.cycle_engine.enums.OrderStatus;
+import com.itrosys.cycle_engine.dto.AddressDTO;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -13,7 +14,7 @@ import java.util.stream.Collectors;
 public class OrderResponse {
     private Long orderId;
     private Long userId;
-    private Long addressId;
+    private AddressDTO address;
     private LocalDateTime orderDate;
     private String brand;
     private Integer quantity;
@@ -57,7 +58,7 @@ public class OrderResponse {
         OrderResponse response = new OrderResponse();
         response.setOrderId(order.getOrderId());
         response.setUserId(order.getUser().getId());
-        response.setAddressId(order.getAddress().getId());
+        response.setAddress(AddressDTO.fromEntity(order.getAddress()));
         response.setOrderDate(order.getOrderDate());
         response.setBrand(order.getBrand());
         response.setQuantity(order.getQuantity());

@@ -334,9 +334,8 @@ export const compareAPI = {
 // Modified order API functions
 export const orderAPI = {
   // Get orders by filter - modified to use getUserId from auth.js
-  getOrdersByFilter: async (filter) => {
+  getOrdersByFilter: async (userId, filter) => {
     try {
-      const userId = getUserId();
       let response;
       if (filter.includes('year-')) {
         const year = filter.split('-')[1];
