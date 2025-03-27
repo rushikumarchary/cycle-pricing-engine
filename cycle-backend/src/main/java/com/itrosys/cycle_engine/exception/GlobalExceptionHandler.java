@@ -78,4 +78,9 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(e.getMessage(),HttpStatus.NOT_FOUND);
     }
 
+    @ExceptionHandler(DuplicateCoupons.class)
+    public ResponseEntity<String> handleDuplicateCoupons(DuplicateCoupons ex){
+        return new ResponseEntity<>(ex.getMessage() ,HttpStatus.NOT_ACCEPTABLE);
+    }
+
 }

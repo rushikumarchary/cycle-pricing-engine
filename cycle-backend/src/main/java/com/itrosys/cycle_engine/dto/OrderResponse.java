@@ -15,6 +15,7 @@ public class OrderResponse {
     private Long userId;
     private AddressDTO address;
     private LocalDateTime orderDate;
+    private LocalDateTime estimatedDeliveryDate;
     private String brand;
     private Integer quantity;
     private Double unitPrice;
@@ -53,29 +54,30 @@ public class OrderResponse {
         }
     }
 
-        public static OrderResponse fromEntity(Orders order) {
-            OrderResponse response = new OrderResponse();
-            response.setOrderId(order.getOrderId());
-            response.setUserId(order.getUser().getId());
-            response.setAddress(AddressDTO.fromEntity(order.getAddress()));
-            response.setOrderDate(order.getOrderDate());
-            response.setBrand(order.getBrand());
-            response.setQuantity(order.getQuantity());
-            response.setUnitPrice(order.getUnitPrice());
-            response.setSubtotal(order.getSubtotal());
-            response.setDiscountAmount(order.getDiscountAmount());
-            response.setGstAmount(order.getGstAmount());
-            response.setShippingCost(order.getShippingCost());
-            response.setTotalAmount(order.getTotalAmount());
-            response.setStatus(order.getStatus());
-            response.setThumbnail(order.getThumbnail());
-            response.setSpecifications(SpecificationsDTO.fromEntity(order.getSpecifications()));
-            return response;
-        }
-
-        public static List<OrderResponse> fromEntityList(List<Orders> orders) {
-            return orders.stream()
-                    .map(OrderResponse::fromEntity)
-                    .collect(Collectors.toList());
-        }
+    public static OrderResponse fromEntity(Orders order) {
+        OrderResponse response = new OrderResponse();
+        response.setOrderId(order.getOrderId());
+        response.setUserId(order.getUser().getId());
+        response.setAddress(AddressDTO.fromEntity(order.getAddress()));
+        response.setOrderDate(order.getOrderDate());
+        response.setEstimatedDeliveryDate(order.getEstimatedDeliveryDate());
+        response.setBrand(order.getBrand());
+        response.setQuantity(order.getQuantity());
+        response.setUnitPrice(order.getUnitPrice());
+        response.setSubtotal(order.getSubtotal());
+        response.setDiscountAmount(order.getDiscountAmount());
+        response.setGstAmount(order.getGstAmount());
+        response.setShippingCost(order.getShippingCost());
+        response.setTotalAmount(order.getTotalAmount());
+        response.setStatus(order.getStatus());
+        response.setThumbnail(order.getThumbnail());
+        response.setSpecifications(SpecificationsDTO.fromEntity(order.getSpecifications()));
+        return response;
     }
+
+    public static List<OrderResponse> fromEntityList(List<Orders> orders) {
+        return orders.stream()
+                .map(OrderResponse::fromEntity)
+                .collect(Collectors.toList());
+    }
+}

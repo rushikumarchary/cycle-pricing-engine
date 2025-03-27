@@ -6,7 +6,7 @@ import { MdDelete } from "react-icons/md";
 import { useNavigate } from "react-router-dom";
 
 import { useCart } from "../../context/CartContext";
-import { cartAPI, compareAPI } from "../../utils/api";
+import { cartAPI, compareAPI, couponAPI } from "../../utils/api";
 import React from "react";
 import Address from "../../pages/address/Address";
 import { loadRazorpay, createOrder, initializeRazorpayCheckout } from "../../utils/payment";
@@ -29,6 +29,7 @@ const Cart = () => {
   const [selectedAddress, setSelectedAddress] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState("");
+  const [discountPercentage, setDiscountPercentage] = useState(0);
 
   const navigate = useNavigate();
 
@@ -47,12 +48,19 @@ const Cart = () => {
     try {
       const data = await cartAPI.getAllCartItems();
       setCart(data);
+      // Automatically select all items when cart is loaded
+      if (data && data.length > 0) {
+        setSelectedItems(new Set(data.map(item => item.cartId)));
+      } else {
+        setSelectedItems(new Set());
+      }
     } catch (error) {
       if (!error.isHandled) {
         if (error.response && error.response.status === 401) {
           navigate('/login');
         } else {
           setCart([]);
+          setSelectedItems(new Set());
           updateCartCount(0);
         }
         error.isHandled = true;
@@ -85,7 +93,7 @@ const Cart = () => {
       let total = selectedSubtotal;
       
       if (discountApplied) {
-        const discount = total * 0.05;
+        const discount = total * (discountPercentage / 100);
         setDiscountAmount(discount);
         total -= discount;
       } else {
@@ -112,7 +120,7 @@ const Cart = () => {
     };
     
     calculateSelectedPrices();
-  }, [cart, selectedItems, discountApplied, shippingCost]);
+  }, [cart, selectedItems, discountApplied, shippingCost, discountPercentage]);
 
   const handleIncrement = async (item) => {
     try {
@@ -155,18 +163,34 @@ const Cart = () => {
     }
   };
 
-  const applyPromoCode = () => {
-    if (promoCode.toUpperCase() === "NEW5") {
-      if (!discountApplied) {
-        setDiscountApplied(true);
-        toast.success("5% Discount Applied Successfully!");
+  const applyPromoCode = async () => {
+    if (!promoCode.trim()) {
+      toast.error("Please enter a promo code");
+      return;
+    }
+
+    try {
+      const couponData = await couponAPI.validateCoupon(promoCode);
+      
+      if (couponData.isActive === "Y") {
+        if (!discountApplied) {
+          setDiscountApplied(true);
+          setDiscountPercentage(couponData.discountPercentage);
+          toast.success(`${couponData.discountPercentage}% Discount Applied Successfully!`);
+        } else {
+          toast.error("Promo Code Already Applied");
+        }
       } else {
-        toast.error("Promo Code Already Applied");
+        setDiscountApplied(false);
+        setDiscountAmount(0);
+        setDiscountPercentage(0);
+        toast.error("Invalid or inactive promo code");
       }
-    } else {
+    } catch (error) {
       setDiscountApplied(false);
       setDiscountAmount(0);
-      toast.error("Invalid promo code");
+      setDiscountPercentage(0);
+      toast.error(error.response?.data?.message || "Invalid promo code");
     }
   };
 
@@ -174,6 +198,7 @@ const Cart = () => {
     setPromoCode("");
     setDiscountApplied(false);
     setDiscountAmount(0);
+    setDiscountPercentage(0);
   };
 
   let continueShopping = () => {
@@ -196,7 +221,7 @@ const Cart = () => {
         addressId: address.addressId,
         shippingCost: shippingCost,
         cartIds: Array.from(selectedItems),
-        discountApplied: discountApplied
+        couponCode: discountApplied ? promoCode : null
       };
 
       // Create order using payment utility
@@ -650,7 +675,7 @@ const Cart = () => {
                 {discountApplied && (
                   <div className="flex justify-between text-green-600">
                     <span className="font-medium text-sm sm:text-base uppercase">
-                      Discount (5%)
+                      Discount ({discountPercentage}%)
                     </span>
                     <span className="font-semibold text-sm sm:text-base">
                       -₹{discountAmount.toFixed(2)}

@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Getter
 @Setter
@@ -20,7 +21,6 @@ public class PaymentOrder {
     private Long id;
 
     private String razorpayOrderId;
-    private Long orderId;
     private String paymentId;
     private String signature;
     private Double amount;
@@ -30,6 +30,7 @@ public class PaymentOrder {
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
-
+    @OneToMany(mappedBy = "paymentOrder", cascade = CascadeType.ALL)
+    private List<PaymentOrderMapping> orderMappings;
 }
 

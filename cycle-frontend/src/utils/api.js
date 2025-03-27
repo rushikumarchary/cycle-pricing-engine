@@ -423,3 +423,20 @@ export const orderAPI = {
     }
   }
 };
+
+// Coupon API functions
+export const couponAPI = {
+  // Validate coupon code
+  validateCoupon: async (code) => {
+    try {
+      const response = await axios.get(
+        `${DomainName}/coupons/code/${code}`,
+        getAuthHeader()
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error validating coupon:', error);
+      throw error;
+    }
+  }
+};

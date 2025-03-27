@@ -29,6 +29,9 @@ public class Orders {
     private LocalDateTime orderDate;
 
     @Column(nullable = false)
+    private LocalDateTime estimatedDeliveryDate;
+
+    @Column(nullable = false)
     private String brand;
 
     @Column(nullable = false)

@@ -4,6 +4,7 @@ import com.itrosys.cycle_engine.dto.OrderRequest;
 import com.itrosys.cycle_engine.dto.PaymentVerificationRequest;
 import com.itrosys.cycle_engine.entity.*;
 import com.itrosys.cycle_engine.enums.OrderStatus;
+import com.itrosys.cycle_engine.enums.IsActive;
 import com.itrosys.cycle_engine.exception.PaymentException;
 import com.itrosys.cycle_engine.repository.*;
 import com.razorpay.Order;
@@ -30,14 +31,15 @@ import java.util.Map;
 @Service
 public class PaymentService {
     private static final Logger logger = LoggerFactory.getLogger(PaymentService.class);
-    private static final double DISCOUNT_PERCENTAGE = 0.05; // 5% discount
 
     private final PaymentOrderRepository paymentOrderRepository;
+    private final PaymentOrderMappingRepository paymentOrderMappingRepository;
     private final UserRepository userRepository;
     private final AddressRepository addressRepository;
     private final CartRepository cartRepository;
     private final OrderRepository orderRepository;
     private final SpecificationsRepository specificationsRepository;
+    private final CouponsRepository couponsRepository;
     private RazorpayClient razorpayClient;
 
     @Value("${razorpay.key.id}")
@@ -47,17 +49,21 @@ public class PaymentService {
     private String razorpayKeySecret;
 
     public PaymentService(PaymentOrderRepository paymentOrderRepository,
+            PaymentOrderMappingRepository paymentOrderMappingRepository,
             UserRepository userRepository,
             AddressRepository addressRepository,
             CartRepository cartRepository,
             OrderRepository orderRepository,
-            SpecificationsRepository specificationsRepository) {
+            SpecificationsRepository specificationsRepository,
+            CouponsRepository couponsRepository) {
         this.paymentOrderRepository = paymentOrderRepository;
+        this.paymentOrderMappingRepository = paymentOrderMappingRepository;
         this.userRepository = userRepository;
         this.addressRepository = addressRepository;
         this.cartRepository = cartRepository;
         this.orderRepository = orderRepository;
         this.specificationsRepository = specificationsRepository;
+        this.couponsRepository = couponsRepository;
     }
 
     @PostConstruct
@@ -89,7 +95,10 @@ public class PaymentService {
                 Orders order = new Orders();
                 order.setUser(user);
                 order.setAddress(address);
-                order.setOrderDate(LocalDateTime.now(ZoneId.of("Asia/Kolkata")));
+                LocalDateTime orderDate = LocalDateTime.now(ZoneId.of("Asia/Kolkata"));
+                order.setOrderDate(orderDate);
+                // Set estimated delivery date to 7 days from order date
+                order.setEstimatedDeliveryDate(orderDate.plusDays(7));
                 order.setStatus(OrderStatus.Pending);
 
                 // Set cart details
@@ -103,10 +112,10 @@ public class PaymentService {
                     Item item = cartItem.getItem();
                     cartItemsTotal = cartItemsTotal.add(item.getPrice());
                 }
-                
+
                 // Set unit price as sum of all items' prices
                 order.setUnitPrice(cartItemsTotal.doubleValue());
-                
+
                 // Calculate subtotal (total price * quantity)
                 BigDecimal subtotal = cartItemsTotal.multiply(BigDecimal.valueOf(cart.getQuantity()));
                 totalSubtotal = totalSubtotal.add(subtotal);
@@ -123,7 +132,7 @@ public class PaymentService {
                     specs.setBrakes("Not Selected");
                     specs.setTyre("Not Selected");
                     specs.setChainAssembly("Not Selected");
-                    
+
                     // Update specifications from all items in the cart
                     for (CartItem cartItem : cart.getCartItems()) {
                         Item currentItem = cartItem.getItem();
@@ -161,10 +170,19 @@ public class PaymentService {
             }
 
             // Calculate final amounts using BigDecimal for precision
-            BigDecimal discountAmount = orderRequest.isDiscountApplied() 
-                ? totalSubtotal.multiply(BigDecimal.valueOf(DISCOUNT_PERCENTAGE)).setScale(2, RoundingMode.HALF_UP)
-                : BigDecimal.ZERO;
-            
+            BigDecimal discountAmount = BigDecimal.ZERO;
+
+            // Check if coupon code exists and is active
+            if (orderRequest.getCouponCode() != null && !orderRequest.getCouponCode().isEmpty()) {
+                Coupons coupon = couponsRepository.findByCouponCode(orderRequest.getCouponCode())
+                        .orElse(null);
+
+                if (coupon != null && coupon.getIsActive() == IsActive.Y) {
+                    discountAmount = totalSubtotal.multiply(BigDecimal.valueOf(coupon.getDiscountPercentage() / 100))
+                            .setScale(2, RoundingMode.HALF_UP);
+                }
+            }
+
             BigDecimal subtotalAfterDiscount = totalSubtotal.subtract(discountAmount);
             BigDecimal gstAmount = calculateGST(subtotalAfterDiscount);
             BigDecimal shippingCost = BigDecimal.valueOf(orderRequest.getShippingCost());
@@ -174,11 +192,12 @@ public class PaymentService {
             for (Orders order : orders) {
                 BigDecimal orderSubtotal = BigDecimal.valueOf(order.getSubtotal());
                 BigDecimal ratio = orderSubtotal.divide(totalSubtotal, 10, RoundingMode.HALF_UP);
-                
+
                 // Calculate individual order amounts
                 BigDecimal orderDiscountAmount = discountAmount.multiply(ratio).setScale(2, RoundingMode.HALF_UP);
                 BigDecimal orderGstAmount = gstAmount.multiply(ratio).setScale(2, RoundingMode.HALF_UP);
-                BigDecimal orderShippingCost = shippingCost.divide(BigDecimal.valueOf(orders.size()), 2, RoundingMode.HALF_UP);
+                BigDecimal orderShippingCost = shippingCost.divide(BigDecimal.valueOf(orders.size()), 2,
+                        RoundingMode.HALF_UP);
                 BigDecimal orderTotalAmount = finalAmount.multiply(ratio).setScale(2, RoundingMode.HALF_UP);
 
                 order.setDiscountAmount(orderDiscountAmount.doubleValue());
@@ -192,7 +211,7 @@ public class PaymentService {
 
             // Create Razorpay order
             Order razorpayOrder = createRazorpayOrder(finalAmount.doubleValue());
-            savePaymentOrder(razorpayOrder, savedOrders.get(0).getOrderId());
+            savePaymentOrder(razorpayOrder, savedOrders);
 
             // Delete all carts after successful order creation
             cartRepository.deleteAllById(orderRequest.getCartIds());
@@ -219,20 +238,30 @@ public class PaymentService {
         return razorpayClient.orders.create(orderRequestJson);
     }
 
-    private void savePaymentOrder(Order razorpayOrder, Long orderId) {
+    private void savePaymentOrder(Order razorpayOrder, List<Orders> orders) {
         PaymentOrder paymentOrder = new PaymentOrder();
         paymentOrder.setRazorpayOrderId(razorpayOrder.get("id"));
-        paymentOrder.setOrderId(orderId);
         paymentOrder.setAmount(Double.valueOf(razorpayOrder.get("amount").toString()) / 100);
         paymentOrder.setCurrency(razorpayOrder.get("currency"));
         paymentOrder.setStatus("CREATED");
-        paymentOrderRepository.save(paymentOrder);
+        
+        // Save the payment order first
+        paymentOrder = paymentOrderRepository.save(paymentOrder);
+
+        // Create and save mappings for each order
+        for (Orders order : orders) {
+            PaymentOrderMapping mapping = new PaymentOrderMapping();
+            mapping.setPaymentOrder(paymentOrder);
+            mapping.setOrder(order);
+            paymentOrderMappingRepository.save(mapping);
+        }
     }
 
     private Map<String, Object> generateOrderResponse(Order razorpayOrder, List<Orders> orders) {
         Map<String, Object> response = new HashMap<>();
-        
+
         // Razorpay order details
+        response.put("razorpayKeyId", razorpayKeyId);
         response.put("orderId", razorpayOrder.get("id"));
         response.put("amount", razorpayOrder.get("amount"));
         response.put("currency", razorpayOrder.get("currency"));
@@ -257,7 +286,7 @@ public class PaymentService {
         response.put("discountAmount", totalDiscountAmount.setScale(2, RoundingMode.HALF_UP).doubleValue());
         response.put("gstAmount", totalGstAmount.setScale(2, RoundingMode.HALF_UP).doubleValue());
         response.put("shippingCost", totalShippingCost.setScale(2, RoundingMode.HALF_UP).doubleValue());
-        
+
         return response;
     }
 
@@ -272,7 +301,11 @@ public class PaymentService {
             paymentOrder.setSignature(request.getSignature());
             paymentOrderRepository.save(paymentOrder);
 
-            updateOrderStatus(paymentOrder.getOrderId(), OrderStatus.Confirmed);
+            // Update status for all orders in this payment
+            List<PaymentOrderMapping> mappings = paymentOrderMappingRepository.findByPaymentOrderId(paymentOrder.getId());
+            for (PaymentOrderMapping mapping : mappings) {
+                updateOrderStatus(mapping.getOrder().getOrderId(), OrderStatus.Confirmed);
+            }
             return true;
         } else {
             paymentOrder.setStatus("FAILED");

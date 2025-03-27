@@ -9,5 +9,5 @@ public class OrderRequest {
     private Long addressId;
     private List<Long> cartIds;
     private Double shippingCost;
-    private boolean discountApplied;
+    private String couponCode;
 }
