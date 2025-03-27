@@ -42,13 +42,15 @@ const Orders = () => {
     setError(null);
     try {
       const data = await orderAPI.getOrdersByFilter(userId, filter);
+      // Sort orders by orderDate in descending order (newest first)
+      const sortedData = data.sort((a, b) => new Date(b.orderDate) - new Date(a.orderDate));
       // Extract registration year from the first order's userRegisterDate
-      if (data && data.length > 0 && data[0].userRegisterDate) {
-        const regYear = new Date(data[0].userRegisterDate).getFullYear();
+      if (sortedData && sortedData.length > 0 && sortedData[0].userRegisterDate) {
+        const regYear = new Date(sortedData[0].userRegisterDate).getFullYear();
         setRegistrationYear(regYear);
       }
-      setOrders(data);
-      setFilteredOrders(data);
+      setOrders(sortedData);
+      setFilteredOrders(sortedData);
     } catch (err) {
       setError('Failed to fetch orders. Please try again later.');
       console.error('Error fetching orders:', err);

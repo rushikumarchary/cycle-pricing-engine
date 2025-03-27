@@ -3,10 +3,7 @@ package com.itrosys.cycle_engine.controller;
 import java.util.List;
 
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import com.itrosys.cycle_engine.dto.OrderResponse;
 
@@ -22,7 +19,7 @@ public class OrderController {
         this.orderDetailsService = orderDetailsService;
     }
 
- 
+
 
     @GetMapping("/user/{userId}")
     public ResponseEntity<List<OrderResponse>> getOrdersByUser(@PathVariable Long userId) {
@@ -49,27 +46,31 @@ public class OrderController {
         return ResponseEntity.ok(orderDetailsService.getOrdersByYear(userId, year));
     }
 
-        
+    @PatchMapping("admin/update-status/{orderId}/{status}")
+    public ResponseEntity<String> updateOrder(@PathVariable Long orderId, @PathVariable String status){
+        return ResponseEntity.ok(orderDetailsService.updateOrderStatus(orderId,status));
+    }
+
         @GetMapping("/admin/all")
         public ResponseEntity<List<OrderResponse>> getAllOrders() {
             return ResponseEntity.ok(orderDetailsService.getAllOrders());
         }
-        
+
         @GetMapping("/admin/last-month")
         public ResponseEntity<List<OrderResponse>> getAllLastMonthOrders() {
             return ResponseEntity.ok(orderDetailsService.getAllLastMonthOrders());
         }
-        
+
         @GetMapping("/admin/last-three-months")
         public ResponseEntity<List<OrderResponse>> getAllLastThreeMonthsOrders() {
             return ResponseEntity.ok(orderDetailsService.getAllLastThreeMonthsOrders());
         }
-        
+
         @GetMapping("/admin/last-six-months")
         public ResponseEntity<List<OrderResponse>> getAllLastSixMonthsOrders() {
             return ResponseEntity.ok(orderDetailsService.getAllLastSixMonthsOrders());
         }
-        
+
         @GetMapping("/admin/year/{year}")
         public ResponseEntity<List<OrderResponse>> getAllOrdersByYear(@PathVariable int year) {
             return ResponseEntity.ok(orderDetailsService.getAllOrdersByYear(year));

@@ -412,8 +412,8 @@ export const orderAPI = {
   updateOrderStatus: async (orderId, status) => {
     try {
       const response = await axios.patch(
-        `${DomainName}/orders/update-status/${orderId}`,
-        { status },
+        `${DomainName}/orders/admin/update-status/${orderId}/${status}`,
+        null,
         getAuthHeader()
       );
       return response.data;
