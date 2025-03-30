@@ -3,7 +3,6 @@ package com.itrosys.cycle_engine.controller;
 import com.itrosys.cycle_engine.dto.BrandResponse;
 import com.itrosys.cycle_engine.dto.Cycle;
 import com.itrosys.cycle_engine.dto.CycleResponse;
-import com.itrosys.cycle_engine.entity.Brand;
 import com.itrosys.cycle_engine.service.CycleService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;

@@ -1,0 +1,15 @@
+{
+    "compilerOptions": {
+      "target": "ES6",
+      "module": "ESNext",
+      "moduleResolution": "Node",
+      "allowSyntheticDefaultImports": true,
+      "baseUrl": "./",
+      "paths": {
+        "./components/*": ["src/components/*"],
+        "./pages/*": ["src/pages/*"]
+      }
+    },
+    "exclude": ["node_modules", "dist"]
+  }
+  

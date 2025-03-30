@@ -1,6 +1,12 @@
 package com.itrosys.cycle_engine.service;
 
 
+import java.util.List;
+import java.util.Optional;
+
+import org.springframework.stereotype.Service;
+
+import com.itrosys.cycle_engine.config.UserInfo;
 import com.itrosys.cycle_engine.dto.BrandResponse;
 import com.itrosys.cycle_engine.entity.Brand;
 import com.itrosys.cycle_engine.entity.Item;
@@ -9,12 +15,6 @@ import com.itrosys.cycle_engine.exception.BrandNotFound;
 import com.itrosys.cycle_engine.exception.DuplicateBrand;
 import com.itrosys.cycle_engine.repository.BrandRepository;
 import com.itrosys.cycle_engine.repository.ItemRepository;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.stereotype.Service;
-
-import java.util.List;
-import java.util.Optional;
 
 @Service
 public class BrandService {
@@ -51,7 +51,7 @@ public class BrandService {
         Optional<Brand> existingBrandOptional = brandRepository.findByBrandName(brandName);
 
         // Get logged-in user
-        String loggedInUsername = getLoggedInUsername();
+        String loggedInUsername = UserInfo.getLoggedInUsername();
 //        Check the brand present in database
         if (existingBrandOptional.isPresent()) {
             Brand existingBrand = existingBrandOptional.get();
@@ -96,7 +96,7 @@ public class BrandService {
                 .orElseThrow(() -> new BrandNotFound("Brand with ID " + id + " not found."));
 
         // Get logged-in user
-        String loggedInUsername = getLoggedInUsername();
+        String loggedInUsername =UserInfo.getLoggedInUsername();
 
         // Set brand as inactive instead of deleting
         brand.setIsActive(IsActive.N);
@@ -142,7 +142,7 @@ public class BrandService {
 
         // Update brand name and set modified by the current user
         brand.setBrandName(newBrandName);
-        brand.setModifiedBy(getLoggedInUsername());
+        brand.setModifiedBy(UserInfo.getLoggedInUsername());
 
         // Save updated brand
         Brand updatedBrand = brandRepository.save(brand);
@@ -155,14 +155,6 @@ public class BrandService {
     }
 
 
-    // Helper method to get the logged-in username
-    private String getLoggedInUsername() {
-        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        if (principal instanceof UserDetails userDetails) {
-            return userDetails.getUsername();
-        } else {
-            return principal.toString();
-        }
-    }
+  
 
 }

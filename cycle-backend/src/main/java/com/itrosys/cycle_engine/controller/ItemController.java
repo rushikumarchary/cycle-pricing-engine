@@ -2,7 +2,7 @@ package com.itrosys.cycle_engine.controller;
 
 import com.itrosys.cycle_engine.dto.ItemRequest;
 import com.itrosys.cycle_engine.dto.ItemResponse;
-import com.itrosys.cycle_engine.entity.Item;
+
 import com.itrosys.cycle_engine.service.ItemService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;

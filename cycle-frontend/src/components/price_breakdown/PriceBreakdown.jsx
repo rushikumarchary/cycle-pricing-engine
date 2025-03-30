@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
+import PropTypes from 'prop-types';
 import cycle1 from "../../assets/cycle1.webp";
 import cycle2 from "../../assets/cycle2.webp";
 import cycle3 from "../../assets/cycle3.webp";
@@ -51,7 +52,8 @@ function PriceBreakdown({ priceData, handleClear }) {
       };
 
       // Make API call using cartAPI
-      await cartAPI.addToCart(apiRequestBody);
+      const response = await cartAPI.addToCart(apiRequestBody);
+      console.log(response);
       
       // Update toast to success
       Toast.fire({
@@ -62,9 +64,14 @@ function PriceBreakdown({ priceData, handleClear }) {
       });
 
       handleClear();
-      // Navigate to cart after success
+      // Navigate to cart after success with the new cartId
       setTimeout(() => {
-        navigate('/cart');
+        navigate('/cart', { 
+          state: { 
+            newCartId: response.cartId,
+            preserveSelections: true 
+          }
+        });
       }, 1500);
       
     } catch (error) {
@@ -135,5 +142,19 @@ function PriceBreakdown({ priceData, handleClear }) {
     </>
   );
 }
+
+// PropTypes validation
+PriceBreakdown.propTypes = {
+  priceData: PropTypes.shape({
+    brand: PropTypes.string.isRequired,
+    parts: PropTypes.objectOf(PropTypes.shape({
+      itemId: PropTypes.string.isRequired,
+      itemName: PropTypes.string.isRequired,
+      price: PropTypes.number.isRequired
+    })).isRequired,
+    totalPartsPrice: PropTypes.number.isRequired
+  }).isRequired,
+  handleClear: PropTypes.func.isRequired
+};
 
 export default PriceBreakdown;

@@ -38,20 +38,6 @@ public class SecurityConfig {
         this.jwtFilter = jwtFilter;
     }
 
-
-//    @Bean
-//    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-//        return  http
-//                .csrf(AbstractHttpConfigurer::disable)
-//                .authorizeHttpRequests(request -> request
-//                        .requestMatchers("/auth/register","/auth/login").permitAll()
-//                        .anyRequest().authenticated())
-//                .sessionManagement(session ->
-//                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-//                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
-//                .build();
-//    }
-
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
@@ -59,8 +45,8 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(request -> request
                         .requestMatchers("/auth/signUp", "/auth/signIn", "/").permitAll()
-                        .requestMatchers("/brand/**", "/item/**")
-                        .hasAnyAuthority("ADMIN", "MANAGER", "EMPLOYEE")  // Restrict these endpoints
+                        .requestMatchers("/brand/**", "/item/**","/coupons/**","/orders/admin/**")
+                        .hasAnyAuthority("ADMIN", "MANAGER")  // Restrict these endpoints
                         .anyRequest().authenticated())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
@@ -95,38 +81,9 @@ public class SecurityConfig {
         return new CorsFilter(source);
     }
 
-//    @Bean
-//    public CorsFilter corsFilter() {
-//        CorsConfiguration config = new CorsConfiguration();
-//        config.setAllowedOrigins(Arrays.asList(allowedOrigins.split(","))); // Convert CSV string to List
-//        config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-//        config.setAllowedHeaders(List.of("*"));
-//        config.setAllowCredentials(true);
-//
-//        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-//        source.registerCorsConfiguration("/**", config);
-//        return new CorsFilter(source);
-//    }
-
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
     }
 }
 
-//    @Bean
-//    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-//        return http
-//                .csrf(csrf -> csrf.disable()) // Disable CSRF (only for testing; enable in production)
-//                .authorizeHttpRequests(auth -> auth
-//                        .requestMatchers("/brand/delete/**", "/item/delete/**", "/brand/update/**", "/brand/add", "/item/add", "/item/update/**")
-//                        .hasAnyRole("ADMIN", "MANAGER","USER") // Allow both roles
-//                        .anyRequest().authenticated()// Allow all other requests without authentication
-//                )
-
-/// /                .formLogin(withDefaults()) // Enables form-based login
-//                .httpBasic(withDefaults())
-//                .sessionManagement(session ->
-//                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-//                .build();
-//    }

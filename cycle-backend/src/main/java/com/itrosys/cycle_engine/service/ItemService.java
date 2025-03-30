@@ -10,8 +10,7 @@ import com.itrosys.cycle_engine.exception.InvalidDateFormat;
 import com.itrosys.cycle_engine.exception.ItemNotFound;
 import com.itrosys.cycle_engine.repository.BrandRepository;
 import com.itrosys.cycle_engine.repository.ItemRepository;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
+import com.itrosys.cycle_engine.config.UserInfo;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -79,22 +78,14 @@ public class ItemService {
             item.setIsActive(IsActive.Y);
         }
 
-        item.setModifiedBy(getLoggedInUsername());
+        item.setModifiedBy(UserInfo.getLoggedInUsername());
         Item savedItem = itemRepository.save(item);
 
         return mapToItemResponse(savedItem, "Item Add Successfully.");
     }
 
 
-    // Helper method to get the logged-in username
-    private String getLoggedInUsername() {
-        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        if (principal instanceof UserDetails userDetails) {
-            return userDetails.getUsername();
-        } else {
-            return principal.toString();
-        }
-    }
+    
 
 
     public ItemResponse mapToItemResponse(Item item, String message) {
@@ -180,46 +171,6 @@ public class ItemService {
     }
 
 
-//
-//    public List<ItemResponse> getItemsByType(String type, int brandId) {
-//        // Fetch distinct item types from the database
-//        List<String> distinctItemTypes = itemRepository.findDistinctItemTypes();
-//
-//        // Check if the given type exists in the list
-//        if (!distinctItemTypes.contains(type)) {
-//            throw new ItemNotFound("Item type '" + type + "' not found.");
-//        }
-//
-//        // Fetch items for the given type
-//        List<Item> items = itemRepository.findByItemTypeAndIsActiveAndBrand_IsActive(type, IsActive.Y, IsActive.Y);
-//
-//        // If no active items are found, throw an exception
-//        if (items.isEmpty()) {
-//            throw new ItemNotFound("No active items found for type: " + type);
-//        }
-//
-//        // Filter items where brandId matches the given brandId
-//        List<ItemResponse> filteredItems = items.stream()
-//                .filter(item -> item.getBrand().getBrandId() == brandId)
-//                .map(item -> ItemResponse.builder()
-//                        .itemId(item.getItemId())
-//                        .itemName(item.getItemName())
-//                        .itemType(item.getItemType())
-//                        .price(item.getPrice())
-//                        .validTo(item.getValidTo())
-//                        .brandName(item.getBrand().getBrandName())
-//                        .brandId(item.getBrand().getBrandId())
-//                        .build())
-//                .toList();
-//
-//        // If no items match the given brandId, throw an exception
-//        if (filteredItems.isEmpty()) {
-//            throw new ItemNotFound("No active items found for type: " + type + " and brandId: " + brandId);
-//        }
-//
-//        return filteredItems;
-//    }
-
     public String deleteById(int id) {
         Item item = itemRepository.findById(id)
                 .orElseThrow(() -> new ItemNotFound("Item with Id " + id + " not found"));
@@ -244,7 +195,7 @@ public class ItemService {
 
         // Mark item as inactive and update
         item.setIsActive(IsActive.N);
-        item.setModifiedBy(getLoggedInUsername());
+        item.setModifiedBy(UserInfo.getLoggedInUsername());
          itemRepository.save(item);
 
         return "Item Deleted successfully";
@@ -257,7 +208,7 @@ public class ItemService {
                 .orElseThrow(() -> new ItemNotFound("Item with Id " + id + "  not found"));
 
         item.setIsActive(IsActive.N);
-        item.setModifiedBy(getLoggedInUsername());
+        item.setModifiedBy(UserInfo.getLoggedInUsername());
 
         itemRepository.save(item);
 
@@ -276,7 +227,7 @@ public class ItemService {
             item.setPrice(price);
         }
 
-        item.setModifiedBy(getLoggedInUsername());
+        item.setModifiedBy(UserInfo.getLoggedInUsername());
         Item savedItem = itemRepository.save(item);
 
         return ItemResponse.builder()
@@ -296,7 +247,7 @@ public class ItemService {
         Item item = itemRepository.findById(id)
                 .orElseThrow(() -> new ItemNotFound("Item not found with ID: " + id));
         item.setPrice(newPrice);
-        item.setModifiedBy(getLoggedInUsername());
+        item.setModifiedBy(UserInfo.getLoggedInUsername());
         // Update the item
         Item savedItem = itemRepository.save(item);
         return mapToItemResponse(savedItem, "Item Update Successfully.");
@@ -312,7 +263,7 @@ public class ItemService {
                 .orElseThrow(() -> new ItemNotFound("Item with ID " + itemId + " not found"));
 
         item.setValidTo(parsedDate);
-        item.setModifiedBy(getLoggedInUsername());
+        item.setModifiedBy(UserInfo.getLoggedInUsername());
         Item savedItem = itemRepository.save(item);
 
         return ItemResponse.builder()
@@ -334,7 +285,7 @@ public class ItemService {
             throw new ItemNotFound("Item is All ready Active ..!");
         }
         item.setIsActive(IsActive.Y);
-        item.setModifiedBy(getLoggedInUsername());
+        item.setModifiedBy(UserInfo.getLoggedInUsername());
         Item savedItem = itemRepository.save(item);
 
         return mapToItemResponse(savedItem, "Item Activated Successfully ..!");

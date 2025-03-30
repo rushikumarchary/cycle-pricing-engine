@@ -438,5 +438,94 @@ export const couponAPI = {
       console.error('Error validating coupon:', error);
       throw error;
     }
+  },
+
+  // Add new coupon
+  addCoupon: async (percentage, couponCode) => {
+    try {
+      const response = await axios.post(
+        `${DomainName}/coupons/add?percentage=${percentage}&couponCode=${couponCode}`,
+        null,
+        getAuthHeader()
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error adding coupon:', error);
+      throw error;
+    }
+  },
+
+  // Get all coupons
+  getAllCoupons: async () => {
+    try {
+      const response = await axios.get(
+        `${DomainName}/coupons/all`,
+        getAuthHeader()
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching coupons:', error);
+      throw error;
+    }
+  },
+
+  // Get coupon by ID
+  getCouponById: async (id) => {
+    try {
+      const response = await axios.get(
+        `${DomainName}/coupons/${id}`,
+        getAuthHeader()
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching coupon:', error);
+      throw error;
+    }
+  },
+
+  // Update coupon status
+  updateStatus: async (id) => {
+    try {
+      const response = await axios.patch(
+        `${DomainName}/coupons/status/${id}`,
+        null,
+        getAuthHeader()
+      );
+      return response.data;
+
+      
+    } catch (error) {
+      console.error('Error updating coupon status:', error);
+      throw error;
+    }
+  },
+
+  // Update coupon
+  updateCoupon: async (couponData) => {
+    try {
+      const response = await axios.put(
+        `${DomainName}/coupons/update`,
+        couponData,
+        getAuthHeader()
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error updating coupon:', error);
+      throw error;
+    }
+  },
+
+  // Delete coupon
+  deleteCoupon: async (id) => {
+    try {
+      const response = await axios.delete(
+        `${DomainName}/coupons/delete/${id}`,
+        getAuthHeader()
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error deleting coupon:', error);
+      throw error;
+    }
   }
 };

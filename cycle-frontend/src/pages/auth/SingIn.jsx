@@ -6,7 +6,7 @@ import { FaCalculator, FaBicycle } from "react-icons/fa";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../../hooks/useAuth";
 import { authAPI } from "../../utils/api";
-import { useCart } from "../../context/CartContext";
+import useCart from "../../context/useCart";
 
 function SignIn() {
   const { login } = useAuth();

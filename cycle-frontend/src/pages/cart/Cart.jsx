@@ -1,25 +1,40 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
 import { FaLongArrowAltLeft } from "react-icons/fa";
 import { RxCrossCircled } from "react-icons/rx";
 import { MdDelete } from "react-icons/md";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
+import Swal from "sweetalert2";
 
-import { useCart } from "../../context/CartContext";
+import useCart from "../../context/useCart";
 import { cartAPI, compareAPI, couponAPI } from "../../utils/api";
-import React from "react";
 import Address from "../../pages/address/Address";
 import { loadRazorpay, createOrder, initializeRazorpayCheckout } from "../../utils/payment";
+import {
+  componentMapping,
+  getTotalQuantity,
+  calculateSelectedPrices,
+  validateOrder,
+  
+  validateComparison,
+  validateComparisonView
+} from "./cartPageUtils";
 
 const Cart = () => {
-  const { updateCartCount } = useCart();
+  const { 
+    updateCartCount, 
+    couponState, 
+    updateCouponState, 
+    clearCouponState,
+    selectedItems,
+    updateSelectedItems
+  } = useCart();
+
   const [cart, setCart] = useState([]);
   const [compareItems, setCompareItems] = useState([]);
-  const [selectedItems, setSelectedItems] = useState(new Set());
   const [totalPrice, setTotalPrice] = useState(0);
   const [totalItemsQuantity, setTotalItemsQuantity] = useState(0);
-  const [promoCode, setPromoCode] = useState("");
-  const [discountApplied, setDiscountApplied] = useState(false);
+  const [promoCode, setPromoCode] = useState(couponState.code || "");
   const [discountAmount, setDiscountAmount] = useState(0);
   const [subtotal, setSubtotal] = useState(0);
   const [shippingCost, setShippingCost] = useState(200);
@@ -29,38 +44,59 @@ const Cart = () => {
   const [selectedAddress, setSelectedAddress] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState("");
-  const [discountPercentage, setDiscountPercentage] = useState(0);
 
   const navigate = useNavigate();
+  const location = useLocation();
+  const preserveSelections = location.state?.preserveSelections || false;
+  const newCartId = location.state?.newCartId;
 
-  // Memoize getTotalQuantity function
-  const getTotalQuantity = React.useCallback(() => {
-    return cart.reduce((total, item) => total + item.quantity, 0);
-  }, [cart]);
-
-  // Update cart count whenever cart changes
-  useEffect(() => {
-    updateCartCount(getTotalQuantity());
-  }, [cart, updateCartCount, getTotalQuantity]);
-
-  // Fetch cart data
+  // Fetch cart function
   const fetchCart = async () => {
     try {
       const data = await cartAPI.getAllCartItems();
       setCart(data);
-      // Automatically select all items when cart is loaded
-      if (data && data.length > 0) {
-        setSelectedItems(new Set(data.map(item => item.cartId)));
-      } else {
-        setSelectedItems(new Set());
+      
+      // Get the current cart IDs
+      const currentCartIds = new Set(data.map(item => item.cartId));
+      
+      // If we have a new cartId from navigation, add it to selections
+      if (newCartId && currentCartIds.has(newCartId)) {
+        const newSelectedItems = new Set([newCartId]);
+        updateSelectedItems(newSelectedItems);
       }
+      // If no selections exist, select the most recent item
+      else if (selectedItems.size === 0) {
+        const mostRecentItem = data[data.length - 1];
+        if (mostRecentItem) {
+          const newSelectedItems = new Set([mostRecentItem.cartId]);
+          updateSelectedItems(newSelectedItems);
+        }
+      }
+      // Filter out any selected items that are no longer in the cart
+      else {
+        const validSelectedItems = new Set(
+          Array.from(selectedItems).filter(id => currentCartIds.has(id))
+        );
+        if (validSelectedItems.size !== selectedItems.size) {
+          updateSelectedItems(validSelectedItems);
+        }
+      }
+      
+      // Calculate prices after fetching cart
+      const prices = calculateSelectedPrices(data, selectedItems, couponState, shippingCost);
+      setSubtotal(prices.subtotal);
+      setDiscountAmount(prices.discountAmount);
+      setGstAmount(prices.gstAmount);
+      setTotalPrice(prices.total);
+      setTotalItemsQuantity(prices.selectedQuantity);
+      
     } catch (error) {
       if (!error.isHandled) {
         if (error.response && error.response.status === 401) {
           navigate('/login');
         } else {
           setCart([]);
-          setSelectedItems(new Set());
+          updateSelectedItems(new Set());
           updateCartCount(0);
         }
         error.isHandled = true;
@@ -68,164 +104,73 @@ const Cart = () => {
     }
   };
 
+  // Update cart count whenever cart changes
+  useEffect(() => {
+    updateCartCount(getTotalQuantity(cart));
+  }, [cart, updateCartCount]);
+
+  // Update prices when relevant values change
+  useEffect(() => {
+    const prices = calculateSelectedPrices(cart, selectedItems, selectedItems.size > 0 ? couponState : { isApplied: false }, shippingCost);
+    setSubtotal(prices.subtotal);
+    setDiscountAmount(prices.discountAmount);
+    setGstAmount(prices.gstAmount);
+    setTotalPrice(prices.total);
+    setTotalItemsQuantity(prices.selectedQuantity);
+    
+    if (prices.shouldShowShipping) {
+      setShippingCost(shippingCost);
+    } else {
+      setShippingCost(0);
+    }
+  }, [cart, selectedItems, couponState, shippingCost]);
+
   useEffect(() => {
     fetchCart();
+    // Clear the navigation state after handling it
+    if (preserveSelections || newCartId) {
+      window.history.replaceState({}, document.title);
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[]);
+  }, [preserveSelections, newCartId]);
 
+  // Keep promoCode in sync with couponState
   useEffect(() => {
-    const calculateSelectedPrices = () => {
-      const selectedSubtotal = cart.reduce((total, item) => {
-        if (selectedItems.has(item.cartId)) {
-          return total + item.totalPartsPrice;
-        }
-        return total;
-      }, 0);
-      
-      setSubtotal(selectedSubtotal);
-      
-      if (selectedSubtotal >= 10000 || selectedSubtotal === 0) {
-        setShippingCost(0);
-      } else if (shippingCost === 0) {
-        setShippingCost(200);
-      }
-      
-      let total = selectedSubtotal;
-      
-      if (discountApplied) {
-        const discount = total * (discountPercentage / 100);
-        setDiscountAmount(discount);
-        total -= discount;
-      } else {
-        setDiscountAmount(0);
-      }
-      
-      const gst = total * 0.18;
-      setGstAmount(gst);
-      total += gst;
-      
-      if (selectedSubtotal > 0) {
-        total += shippingCost;
-      }
-      
-      setTotalPrice(total);
-      
-      const selectedQuantity = cart.reduce((total, item) => {
-        if (selectedItems.has(item.cartId)) {
-          return total + item.quantity;
-        }
-        return total;
-      }, 0);
-      setTotalItemsQuantity(selectedQuantity);
-    };
-    
-    calculateSelectedPrices();
-  }, [cart, selectedItems, discountApplied, shippingCost, discountPercentage]);
-
-  const handleIncrement = async (item) => {
-    try {
-      await cartAPI.updateCartQuantity(item.cartId, item.quantity + 1);
-      await fetchCart();
-    } catch (error) {
-      console.error("Error updating quantity:", error);
-      toast.error("Failed to update quantity");
-    }
-  };
-
-  const handleDecrement = async (item) => {
-    if (item.quantity > 1) {
-      try {
-        await cartAPI.updateCartQuantity(item.cartId, item.quantity - 1);
-        await fetchCart();
-      } catch (error) {
-        console.error("Error updating quantity:", error);
-        toast.error("Failed to update quantity");
-      }
+    if (couponState.isApplied) {
+      setPromoCode(couponState.code);
     } else {
-      try {
-        await cartAPI.removeCartItem(item.cartId);
-        await fetchCart();
-        toast.success("Item removed from cart");
-      } catch (error) {
-        console.error("Error removing item:", error);
-        toast.error("Failed to remove item");
-      }
+      setPromoCode("");
     }
-  };
-
-  const handleRemoveOneCart = async (cartId) => {
-    try {
-      await cartAPI.removeCartItem(cartId);
-      await fetchCart();
-    } catch (error) {
-      console.error("Error removing item:", error);
-      toast.error("Failed to remove item");
-    }
-  };
-
-  const applyPromoCode = async () => {
-    if (!promoCode.trim()) {
-      toast.error("Please enter a promo code");
-      return;
-    }
-
-    try {
-      const couponData = await couponAPI.validateCoupon(promoCode);
-      
-      if (couponData.isActive === "Y") {
-        if (!discountApplied) {
-          setDiscountApplied(true);
-          setDiscountPercentage(couponData.discountPercentage);
-          toast.success(`${couponData.discountPercentage}% Discount Applied Successfully!`);
-        } else {
-          toast.error("Promo Code Already Applied");
-        }
-      } else {
-        setDiscountApplied(false);
-        setDiscountAmount(0);
-        setDiscountPercentage(0);
-        toast.error("Invalid or inactive promo code");
-      }
-    } catch (error) {
-      setDiscountApplied(false);
-      setDiscountAmount(0);
-      setDiscountPercentage(0);
-      toast.error(error.response?.data?.message || "Invalid promo code");
-    }
-  };
-
-  const clearPromoCode = () => {
-    setPromoCode("");
-    setDiscountApplied(false);
-    setDiscountAmount(0);
-    setDiscountPercentage(0);
-  };
-
-  let continueShopping = () => {
-    navigate(-1);
-  };
-
-  const handleAddressSelect = (address) => {
-    setSelectedAddress(address);
-    setShowAddressModal(false);
-    // After selecting address, proceed with order creation
-    handleCreateOrder(address);
-  };
+  }, [couponState]);
 
   const handleCreateOrder = async (address) => {
     setIsLoading(true);
     setLoadingMessage("Creating your order...");
     try {
+      // Store ordered cartIds before creating order
+      const orderedCartIds = Array.from(selectedItems);
+      
       // Prepare cart-specific order request
       const orderRequest = {
         addressId: address.addressId,
         shippingCost: shippingCost,
-        cartIds: Array.from(selectedItems),
-        couponCode: discountApplied ? promoCode : null
+        cartIds: orderedCartIds,
+        couponCode: couponState.isApplied ? promoCode : null
       };
 
       // Create order using payment utility
       const orderData = await createOrder(orderRequest);
+      
+      // Remove ordered items from selections immediately after order creation
+      updateSelectedItems(prev => {
+        const newSet = new Set(prev);
+        orderedCartIds.forEach(id => newSet.delete(id));
+        return newSet;
+      });
+
+      // Clear coupon state after order creation
+      clearPromoCode();
+      
       setLoadingMessage("Initializing payment gateway...");
       await handlePaymentCheckout(orderData);
     } catch (error) {
@@ -248,14 +193,7 @@ const Cart = () => {
           onPaymentStart: () => {
             setLoadingMessage("Verifying payment...");
           },
-          onPaymentSuccess: async () => {
-          
-            
-            setIsLoading(false);
-            setLoadingMessage("");
-            toast.success("Payment Successful! Order has been Confirmed.");
-            navigate("/orders");
-          },
+          onPaymentSuccess: handlePaymentSuccess,
           onPaymentError: () => {
             setIsLoading(false);
             setLoadingMessage("");
@@ -288,76 +226,54 @@ const Cart = () => {
 
   // Add handleOrder function
   const handleOrder = () => {
-    if (selectedItems.size === 0) {
-      toast.error("Please select at least one item to checkout");
+    const validation = validateOrder(selectedItems, cart);
+    if (!validation.isValid) {
+      toast.error(validation.message);
       return;
     }
-    
-    // Calculate total for selected items
-    const selectedTotal = cart.reduce((total, item) => {
-      if (selectedItems.has(item.cartId)) {
-        return total + item.totalPartsPrice;
-      }
-      return total;
-    }, 0);
-    
-    if (selectedTotal === 0) {
-      toast.error("Please select items to proceed");
-      return;
-    }
-    
     setShowAddressModal(true);
   };
 
+  // Handle item selection
   const handleItemSelect = (cartId) => {
-    setSelectedItems(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(cartId)) {
-        newSet.delete(cartId);
-      } else {
-        newSet.add(cartId);
-      }
-      return newSet;
-    });
-  };
-
-  const handleSelectAll = (checked) => {
-    if (checked) {
-      // Select all items that are in the cart
-      setSelectedItems(new Set(cart.map(item => item.cartId)));
+    const newSet = new Set(selectedItems);
+    if (newSet.has(cartId)) {
+      newSet.delete(cartId);
     } else {
-      // Deselect all items
-      setSelectedItems(new Set());
+      newSet.add(cartId);
+    }
+    updateSelectedItems(newSet);
+
+    // Clear coupon if no items selected
+    if (newSet.size === 0 && couponState.isApplied) {
+      clearPromoCode();
     }
   };
 
-  // Component mapping for estimate details
-  const componentMapping = [
-    { type: "Frame Material", key: "Frame" },
-    { type: "Handlebar Type", key: "Handlebar" },
-    { type: "Seating Type", key: "Seating" },
-    { type: "Wheel Type", key: "Wheel" },
-    { type: "Tyre Type", key: "Tyre" },
-    { type: "Brakes Type", key: "Brakes" },
-    { type: "Chain Assembly", key: "Chain Assembly" },
-  ];
+  // Handle select all
+  const handleSelectAll = (checked) => {
+    if (checked) {
+      const allIds = new Set(cart.map(item => item.cartId));
+      updateSelectedItems(allIds);
+    } else {
+      updateSelectedItems(new Set());
+      // Clear coupon when unselecting all
+      if (couponState.isApplied) {
+        clearPromoCode();
+      }
+    }
+  };
 
   const handleAddToCompare = async (id) => {
     try {
-      // Check if item is already in comparison
       const existingItems = await compareAPI.getAllComparisons();
-      if (existingItems.some(item => item.cartId === id)) {
-        toast.error("Item already in comparison list");
-        return;
-      }
+      const validation = validateComparison(existingItems, id);
       
-      // Check if comparison limit is reached (max 3 items)
-      if (existingItems.length >= 4) {
-        toast.error("You can compare up to 4 items only");
+      if (!validation.isValid) {
+        toast.error(validation.message);
         return;
       }
 
-      // Add item to comparison - userId is handled internally now
       await compareAPI.addToCompare(id);
       const updatedItems = await compareAPI.getAllComparisons();
       setCompareItems(updatedItems);
@@ -373,17 +289,167 @@ const Cart = () => {
       const response = await compareAPI.getAllComparisons();
       setCompareItems(response);
       
-      if (response.length < 2) {
-        toast.error("Add at least 2 items to compare");
+      const validation = validateComparisonView(response);
+      if (!validation.isValid) {
+        toast.error(validation.message);
         return;
       }
 
-      // Navigate to compare page
       navigate('/compare');
     } catch (error) {
       console.error("Error viewing comparisons:", error);
       toast.error("Failed to load comparison items");
     }
+  };
+
+  // Clear coupon state after successful payment
+  const handlePaymentSuccess = () => {
+    setIsLoading(false);
+    setLoadingMessage("");
+    
+    // Fetch updated cart to refresh the view
+    fetchCart();
+    
+    toast.success("Payment Successful! Order has been Confirmed.");
+    navigate("/user/orders");
+  };
+
+  // Update shipping cost handler
+  const handleShippingCostChange = (e) => {
+    const newShippingCost = Number(e.target.value);
+    setShippingCost(newShippingCost);
+  };
+
+  const applyPromoCode = async () => {
+    if (!promoCode.trim()) {
+      toast.error("Please enter a promo code");
+      return;
+    }
+
+    // Check if any items are selected
+    if (selectedItems.size === 0) {
+      toast.error("Please select at least one item to apply coupon");
+      return;
+    }
+
+    try {
+      const couponData = await couponAPI.validateCoupon(promoCode);
+
+      console.log(couponData);
+      
+      if (couponData.isActive === "Y") {
+        if (couponState.existingCode) {
+          const result = await Swal.fire({
+            title: 'Change Coupon?',
+            text: 'A different coupon is already applied. Do you want to replace it?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Yes, replace it!',
+            cancelButtonText: 'No, keep current'
+          });
+
+          if (!result.isConfirmed) {
+            setPromoCode(couponState.code);
+            return;
+          }
+        }
+
+        updateCouponState({
+          code: promoCode,
+          existingCode: couponData.couponCode,
+          isApplied: true,
+          percentage: couponData.percentage
+        });
+        toast.success(`${couponData.percentage}% Discount Applied Successfully!`);
+      } else {
+        setPromoCode("");
+        clearCouponState();
+        toast.error("Invalid or inactive promo code");
+      }
+    } catch (error) {
+      setPromoCode("");
+      clearCouponState();
+      toast.error(error.response?.data || "Invalid promo code");
+    }
+  };
+
+  const clearPromoCode = React.useCallback(() => {
+    setPromoCode("");
+    clearCouponState();
+  }, [clearCouponState]);
+
+  const handleIncrement = async (item) => {
+    try {
+      await cartAPI.updateCartQuantity(item.cartId, item.quantity + 1);
+      await fetchCart();
+    } catch (error) {
+      console.error("Error updating quantity:", error);
+      toast.error("Failed to update quantity");
+    }
+  };
+
+  const handleDecrement = async (item) => {
+    if (item.quantity > 1) {
+      try {
+        await cartAPI.updateCartQuantity(item.cartId, item.quantity - 1);
+        await fetchCart();
+      } catch (error) {
+        console.error("Error updating quantity:", error);
+        toast.error("Failed to update quantity");
+      }
+    } else {
+      try {
+        await cartAPI.removeCartItem(item.cartId);
+        // Update selectedItems by removing the deleted cartId
+        updateSelectedItems(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(item.cartId);
+          // Clear coupon if this was the last selected item
+          if (newSet.size === 0 && couponState.isApplied) {
+            clearPromoCode();
+          }
+          return newSet;
+        });
+        await fetchCart();
+        toast.success("Item removed from cart");
+      } catch (error) {
+        console.error("Error removing item:", error);
+        toast.error("Failed to remove item");
+      }
+    }
+  };
+
+  const handleRemoveOneCart = async (cartId) => {
+    try {
+      await cartAPI.removeCartItem(cartId);
+      // Update selectedItems by removing the deleted cartId
+      updateSelectedItems(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(cartId);
+        // Clear coupon if this was the last selected item
+        if (newSet.size === 0 && couponState.isApplied) {
+          clearPromoCode();
+        }
+        return newSet;
+      });
+      await fetchCart();
+    } catch (error) {
+      console.error("Error removing item:", error);
+      toast.error("Failed to remove item");
+    }
+  };
+
+  let continueShopping = () => {
+    navigate(-1);
+  };
+
+  const handleAddressSelect = (address) => {
+    setSelectedAddress(address);
+    setShowAddressModal(false);
+    // After selecting address, proceed with order creation
+    handleCreateOrder(address);
   };
 
   return (
@@ -397,7 +463,7 @@ const Cart = () => {
         </div>
       )}
       {cart.length === 0 ? (
-        <div className="w-full h-[60vh] flex flex-col items-center justify-center gap-4">
+        <div className="w-full min-h-screen pt-[72px] lg:pt-4 flex flex-col items-center justify-center gap-4">
           <h2 className="text-2xl font-bold">Your cart is empty!</h2>
           <p className="text-black text-semibold">
             Explore our products and add items to your cart
@@ -410,22 +476,23 @@ const Cart = () => {
           </button>
         </div>
       ) : (
-        <div className="w-full max-w-[1200px] mx-auto my-2 md:mt-4 px-3 sm:px-4 md:px-6">
-          <div className="flex flex-col lg:flex-row gap-4 sm:gap-5 lg:gap-2">
+       
+        <div className="w-full max-w-[1200px] mx-auto px-3 sm:px-4 md:px-6 pb-6">
+          <div className="flex flex-col lg:flex-row gap-4 sm:gap-5 lg:gap-6">
             {/* Cart Section */}
-            <div className="w-full lg:w-2/3 bg-white rounded-lg shadow-md">
-              <div className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 md:py-6">
+            <div className="w-full lg:w-[65%] bg-white rounded-lg shadow-md">
+              <div className="px-3 sm:px-4 md:px-6 py-3 sm:py-4">
                 <div className="flex justify-between items-center border-b pb-3">
-                  <h1 className="font-semibold text-base sm:text-lg md:text-xl lg:text-2xl">
+                  <h1 className="font-semibold text-base sm:text-lg md:text-xl">
                     Shopping Cart
                   </h1>
-                  <h2 className="font-semibold text-base sm:text-lg md:text-xl lg:text-2xl">
+                  <h2 className="font-semibold text-base sm:text-lg md:text-xl">
                     {cart.length} Products
                   </h2>
                 </div>
                 
-                {/* Products container with sticky headers */}
-                <div className="max-h-[calc(100vh-250px)] sm:max-h-[calc(100vh-280px)] overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+                {/* Products container with adjusted height */}
+                <div className="h-[calc(100vh-250px)] overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
                   {/* Sticky Headers */}
                   <div className="hidden lg:flex py-3 border-b sticky top-0 bg-white z-10">
                     <div className="w-[50%] pl-4">
@@ -603,28 +670,26 @@ const Cart = () => {
             {/* Order Summary Section */}
             <div
               id="summary"
-              className="w-full lg:w-1/3 bg-[#f6f6f6] rounded-lg shadow-md p-4 sm:p-5 lg:p-6"
+              className="w-full lg:w-[35%] bg-[#f6f6f6] rounded-lg shadow-md p-4 sm:p-5"
             >
-              <h1 className="font-semibold text-lg sm:text-xl lg:text-2xl border-b pb-3 mb-4">
+              <h1 className="font-semibold text-lg sm:text-xl border-b pb-3 mb-4">
                 Order Summary
               </h1>
               
               {/* Shipping Section */}
-              {subtotal < 10000 ? (
-                <div className="mb-4 sm:mb-5">
-                  <label className="font-medium text-sm sm:text-base uppercase block mb-2">
-                    Choose Shipping
-                  </label>
-                  <select
-                    className="w-full p-2.5 sm:p-3 text-gray-600 text-sm sm:text-base border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    value={shippingCost}
-                    onChange={(e) => setShippingCost(Number(e.target.value))}
-                  >
-                    <option value={200}>Standard shipping - ₹200.00</option>
-                    <option value={500}>Express shipping - ₹500.00</option>
-                  </select>
-                </div>
-              ) : null}
+              <div className="mb-4 sm:mb-5">
+                <label className="font-medium text-sm sm:text-base uppercase block mb-2">
+                  Choose Shipping
+                </label>
+                <select
+                  className="w-full p-2.5 sm:p-3 text-gray-600 text-sm sm:text-base border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  value={shippingCost}
+                  onChange={handleShippingCostChange}
+                >
+                  <option value={200}>Standard shipping - ₹200.00</option>
+                  <option value={500}>Express shipping - ₹500.00</option>
+                </select>
+              </div>
 
               {/* Promo Code */}
               <div className="mb-4 sm:mb-5">
@@ -672,10 +737,10 @@ const Cart = () => {
                   </span>
                 </div>
 
-                {discountApplied && (
+                {couponState.isApplied && (
                   <div className="flex justify-between text-green-600">
                     <span className="font-medium text-sm sm:text-base uppercase">
-                      Discount ({discountPercentage}%)
+                      Discount ({couponState.percentage}%)
                     </span>
                     <span className="font-semibold text-sm sm:text-base">
                       -₹{discountAmount.toFixed(2)}

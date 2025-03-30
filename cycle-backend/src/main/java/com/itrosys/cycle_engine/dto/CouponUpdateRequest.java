@@ -5,7 +5,7 @@ import lombok.Data;
 
 @Data
 public class CouponUpdateRequest {
-    private Long id;
+    private Long couponId;
     private Double percentage;
     private String couponCode;
     private IsActive isActive;

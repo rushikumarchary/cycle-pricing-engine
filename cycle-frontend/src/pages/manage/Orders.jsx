@@ -11,7 +11,7 @@ import {
 import { orderAPI } from "../../utils/api";
 import { FaEye } from "react-icons/fa";
 
-const ManageOrders = () => {
+const Orders = () => {
   const [orders, setOrders] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
@@ -208,7 +208,7 @@ const ManageOrders = () => {
               <option value="Processing">Processing</option>
               <option value="Confirmed">Confirmed</option>
               <option value="Dispatch">Dispatch</option>
-              <option value="Shipped">Shipped</option>
+              <option value="Delivered">Delivered</option>
               <option value="Canceled">Canceled</option>
             </select>
             <input
@@ -276,7 +276,7 @@ const ManageOrders = () => {
                       <option value="Processing">Processing</option>
                       <option value="Confirmed">Confirmed</option>
                       <option value="Dispatch">Dispatch</option>
-                      <option value="Shipped">Shipped</option>
+                      <option value="Delivered">Delivered</option>
                       <option value="Canceled">Canceled</option>
                     </select>
                   </td>
@@ -431,4 +431,4 @@ const ManageOrders = () => {
   );
 };
 
-export default ManageOrders;
+export default Orders;

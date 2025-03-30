@@ -15,6 +15,9 @@ public class Coupons {
     @Column(name = "coupon_code", nullable = false, unique = true)
     private String couponCode;
 
+    @Column(name = "modified_by", nullable = false)
+    private String modifiedBy;
+
     @Column(name ="discount_percentage", nullable = false)
     private double discountPercentage;
 

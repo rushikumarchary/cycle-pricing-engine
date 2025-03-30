@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/cart")
@@ -22,7 +23,7 @@ public class CartController {
 
 
     @PostMapping("/add")
-    public ResponseEntity<String> addToCart(@RequestBody CartRequest cartRequest) {
+    public ResponseEntity<Map<String, Object>> addToCart(@RequestBody CartRequest cartRequest) {
         return ResponseEntity.ok(cartService.addToCart(cartRequest));
     }
 
