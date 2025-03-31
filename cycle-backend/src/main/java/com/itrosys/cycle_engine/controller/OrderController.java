@@ -50,7 +50,7 @@ public class OrderController {
     public ResponseEntity<String> updateOrder(@PathVariable Long orderId, @PathVariable String status){
         return ResponseEntity.ok(orderDetailsService.updateOrderStatus(orderId,status));
     }
-
+  
         @GetMapping("/admin/all")
         public ResponseEntity<List<OrderResponse>> getAllOrders() {
             return ResponseEntity.ok(orderDetailsService.getAllOrders());
@@ -75,5 +75,10 @@ public class OrderController {
         public ResponseEntity<List<OrderResponse>> getAllOrdersByYear(@PathVariable int year) {
             return ResponseEntity.ok(orderDetailsService.getAllOrdersByYear(year));
         }
+
+    @PatchMapping("/user/cancel-order/{orderId}")
+    public ResponseEntity<String> cancelOrder(@PathVariable Long orderId) {
+        return ResponseEntity.ok(orderDetailsService.cancelOrder(orderId));
+    }
 }
 
