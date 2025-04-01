@@ -5,6 +5,7 @@ import cycle1 from "../../assets/cycle1.webp";
 import cycle2 from "../../assets/cycle2.webp";
 import cycle3 from "../../assets/cycle3.webp";
 import cycle4 from "../../assets/cycle4.webp";
+import cycle5 from "../../assets/cycle5.png";
 import { cartAPI } from "../../utils/api";
 
 function PriceBreakdown({ priceData, handleClear }) {
@@ -12,10 +13,11 @@ function PriceBreakdown({ priceData, handleClear }) {
 
   // Brand to image mapping
   const brandImageMap = {
-    'Honda': cycle1,
-    'Tata': cycle2,
-    'Atlas': cycle3,
-    'Hero': cycle4
+    'Jagur': cycle1,
+    'giant': cycle2,
+    'atlas': cycle3,
+    'schwinn': cycle4,
+    'avon':cycle5
   };
 
   const handleAddToCart = async () => {
@@ -53,8 +55,6 @@ function PriceBreakdown({ priceData, handleClear }) {
 
       // Make API call using cartAPI
       const response = await cartAPI.addToCart(apiRequestBody);
-      console.log(response);
-      
       // Update toast to success
       Toast.fire({
         icon: "success",

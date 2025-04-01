@@ -206,7 +206,7 @@ const Brand = () => {
   );
 
   return (
-    <div className="container mx-auto px-4 py-4 sm:py-6 md:py-8">
+    <div className="container mx-auto px-0 py-4 sm:py-6 md:py-0">
       {brands.length > 0 ? (
         <>
           {/* Search and Add Brand Section */}

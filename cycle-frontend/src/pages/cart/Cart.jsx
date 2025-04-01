@@ -55,13 +55,15 @@ const Cart = () => {
     try {
       const data = await cartAPI.getAllCartItems();
       setCart(data);
+      const updatedItems = await compareAPI.getAllComparisons();
+      setCompareItems(updatedItems);
       
       // Get the current cart IDs
       const currentCartIds = new Set(data.map(item => item.cartId));
       
-      // If we have a new cartId from navigation, add it to selections
+      // If we have a new cartId from navigation, add it to existing selections
       if (newCartId && currentCartIds.has(newCartId)) {
-        const newSelectedItems = new Set([newCartId]);
+        const newSelectedItems = new Set([...Array.from(selectedItems), newCartId]);
         updateSelectedItems(newSelectedItems);
       }
       // If no selections exist, select the most recent item
@@ -157,24 +159,29 @@ const Cart = () => {
         cartIds: orderedCartIds,
         couponCode: couponState.isApplied ? promoCode : null
       };
-
       // Create order using payment utility
       const orderData = await createOrder(orderRequest);
       
-      // Remove ordered items from selections immediately after order creation
-      updateSelectedItems(prev => {
-        const newSet = new Set(prev);
-        orderedCartIds.forEach(id => newSet.delete(id));
-        return newSet;
-      });
-
-      // Clear coupon state after order creation
-      clearPromoCode();
+   
       
       setLoadingMessage("Initializing payment gateway...");
       await handlePaymentCheckout(orderData);
+
+      // Cleanup operations after order creation - non-blocking
+      setTimeout(() => {
+        // Remove ordered items from selections
+        const newSelectedItems = new Set(selectedItems);
+        orderedCartIds.forEach(id => newSelectedItems.delete(id));
+        updateSelectedItems(newSelectedItems);
+        // Update cart count
+        updateCartCount(getTotalQuantity(cart));
+        // Clear coupon state
+        clearPromoCode();
+      }, 0);
+
     } catch (error) {
       setIsLoading(false);
+      clearPromoCode();
       setLoadingMessage("");
       toast.error(error.response?.data?.message || "Failed to create order. Please try again later.");
     }
@@ -267,10 +274,11 @@ const Cart = () => {
   const handleAddToCompare = async (id) => {
     try {
       const existingItems = await compareAPI.getAllComparisons();
+     
       const validation = validateComparison(existingItems, id);
       
       if (!validation.isValid) {
-        toast.error(validation.message);
+        toast.error(validation.message);  
         return;
       }
 
@@ -302,10 +310,16 @@ const Cart = () => {
     }
   };
 
-  // Clear coupon state after successful payment
+  // Handle payment success
   const handlePaymentSuccess = () => {
     setIsLoading(false);
     setLoadingMessage("");
+    
+    // Select the last item by default after successful checkout
+    const lastItem = cart[cart.length - 1];
+    if (lastItem) {
+      updateSelectedItems(new Set([lastItem.cartId]));
+    }
     
     // Fetch updated cart to refresh the view
     fetchCart();
@@ -401,18 +415,7 @@ const Cart = () => {
       }
     } else {
       try {
-        await cartAPI.removeCartItem(item.cartId);
-        // Update selectedItems by removing the deleted cartId
-        updateSelectedItems(prev => {
-          const newSet = new Set(prev);
-          newSet.delete(item.cartId);
-          // Clear coupon if this was the last selected item
-          if (newSet.size === 0 && couponState.isApplied) {
-            clearPromoCode();
-          }
-          return newSet;
-        });
-        await fetchCart();
+         await  handleRemoveOneCart(item.cartId);
         toast.success("Item removed from cart");
       } catch (error) {
         console.error("Error removing item:", error);
@@ -425,15 +428,13 @@ const Cart = () => {
     try {
       await cartAPI.removeCartItem(cartId);
       // Update selectedItems by removing the deleted cartId
-      updateSelectedItems(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(cartId);
-        // Clear coupon if this was the last selected item
-        if (newSet.size === 0 && couponState.isApplied) {
-          clearPromoCode();
-        }
-        return newSet;
-      });
+      const newSet = new Set(selectedItems);
+      newSet.delete(cartId);
+      // Clear coupon if this was the last selected item
+      if (newSet.size === 0 && couponState.isApplied) {
+        clearPromoCode();
+      }
+      updateSelectedItems(newSet);
       await fetchCart();
     } catch (error) {
       console.error("Error removing item:", error);
@@ -568,13 +569,15 @@ const Cart = () => {
                               <RxCrossCircled className="text-base sm:text-lg" />
                               Remove
                             </button>
-                            <button
-                              className="font-medium text-gray-500 text-xs sm:text-sm flex items-center gap-1 hover:text-blue-500 transition-colors whitespace-nowrap"
-                              onClick={() => handleAddToCompare(cartItem.cartId)}
-                            >
-                              <span className="text-base sm:text-lg">+</span>
-                              Add to Compare
-                            </button>
+                            {!compareItems.some(item => item.cart.cartId === cartItem.cartId) && (
+                              <button
+                                className="font-medium text-gray-500 text-xs sm:text-sm flex items-center gap-1 hover:text-blue-500 transition-colors whitespace-nowrap"
+                                onClick={() => handleAddToCompare(cartItem.cartId)}
+                              >
+                                <span className="text-base sm:text-lg">+</span>
+                                Add to Compare
+                              </button>
+                            )}
                           </div>
                         </div>
                       </div>

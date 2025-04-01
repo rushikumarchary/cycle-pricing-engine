@@ -76,9 +76,9 @@ public class OrderController {
             return ResponseEntity.ok(orderDetailsService.getAllOrdersByYear(year));
         }
 
-    @PatchMapping("/user/cancel-order/{orderId}")
-    public ResponseEntity<String> cancelOrder(@PathVariable Long orderId) {
-        return ResponseEntity.ok(orderDetailsService.cancelOrder(orderId));
-    }
+//    @PatchMapping("/user/cancel-order/{orderId}")
+//    public ResponseEntity<String> cancelOrder(@PathVariable Long orderId) {
+//        return ResponseEntity.ok(orderDetailsService.cancelOrder(orderId));
+//    }
 }
 

@@ -170,7 +170,7 @@ const Orders = () => {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 ">
       <div className="w-full px-4 mx-auto flex flex-col gap-4">
         {/* Filter Controls */}
         <div className="flex items-center justify-between mb-6">

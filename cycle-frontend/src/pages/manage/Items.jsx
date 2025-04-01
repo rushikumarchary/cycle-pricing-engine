@@ -48,7 +48,7 @@ function Items() {
       item.itemName.toLowerCase().includes(searchName.toLowerCase())
     );
     setFilteredItems(filtered);
-    console.log(filtered);
+
   }, [searchName, items]); // Dependencies: searchName and items
 
   // Wrap handleApiError in useCallback
@@ -217,22 +217,9 @@ function Items() {
     });
   };
 
-  // const handleItemAdded = async () => {
-  //   try {
-  //     // Refresh items list after adding new item
-  //     const response = await itemAPI.getItemsByBrandName(selectedBrand);
-  //     setItems(response);
-  //   } catch (error) {
-  //     Swal.fire({
-  //       icon: "error",
-  //       title: "Error",
-  //       text: "Failed to refresh items list",
-  //     });
-  //   }
-  // };
 
   return (
-    <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-6 md:py-8">
+    <div className="container mx-auto py-0 sm:px-4  sm:py-6 md:py-0">
       {/* Brand Selection Section */}
       <div className="mb-6">
         <div className="w-full lg:w-3/4 xl:w-2/3 mx-auto flex flex-col items-center">

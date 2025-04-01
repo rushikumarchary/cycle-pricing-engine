@@ -81,6 +81,18 @@ export const addressAPI = {
 
 // Cart API functions
 export const cartAPI = {
+  getCartCount: async () => {
+    try {
+      const response = await axios.get(
+        `${DomainName}/cart/cartItemCount`,
+        getAuthHeader()
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching cart count:', error);
+      return 0;
+    }
+  },
   // Get all cart items
   getAllCartItems: async () => {
     try {
@@ -305,31 +317,72 @@ export const brandAPI = {
 
 // Modified compare API functions
 export const compareAPI = {
-  // Get all comparisons
+  // Get all comparisons for a specific user
   getAllComparisons: async () => {
-    const response = await axios.get(
-      `${DomainName}/compare/comparisons`,
-      getAuthHeader()
-    );
-    return response.data;
-  },
-
-  // Add to compare - modified to use getUserId from auth.js
-  addToCompare: async (id) => {
+    // if (!userId) {
+    //   throw new Error("User ID is required");
+    // }
     try {
-      const userId = getUserId();
-      const response = await axios.post(
-        `${DomainName}/compare/add/${id}/${userId}`,
-        null,
+      const userId = await getUserId();
+     
+      const response = await axios.get(
+        `${DomainName}/api/comparisons/user/${userId}`,
         getAuthHeader()
       );
       return response.data;
     } catch (error) {
-      console.error('Error adding to compare:', error);
+      console.error(
+        "Fetch Comparisons Error:",
+        error.response?.data || error.message
+      );
+      throw error;
+    }
+  },
+  // Add new comparisons
+  addToCompare: async (cartId) => {
+    const userId = await getUserId();
+
+    if (!cartId || !userId) {
+      throw new Error("Cart ID and User ID are required");
+    }
+    try {
+      const response = await axios.post(
+        `${DomainName}/api/comparisons/add?userId=${userId}&cartId=${cartId}`,
+        {}, // Add empty object as the request body
+        getAuthHeader() // Pass the auth header as the third parameter
+      );
+      return response.data;
+    } catch (error) {
+      console.error(
+        "Add to Compare Error:",
+        error.response?.data || error.message
+      );
+      throw error;
+    }
+  },
+   // Delete a specific comparison (corresponding to your backend delete endpoint)
+   deleteComparison: async (comparisonId) => {
+    if (!comparisonId) {
+      throw new Error("Comparison ID is required");
+    }
+    
+    try {
+      const response = await axios.delete(
+        `${DomainName}/api/comparisons/${comparisonId}`,
+        getAuthHeader()
+      );
+      
+      return response.data;
+    } catch (error) {
+      console.error(
+        "Delete Comparison Error:",
+        error.response?.data || error.message
+      );
       throw error;
     }
   }
 };
+
 
 // Modified order API functions
 export const orderAPI = {

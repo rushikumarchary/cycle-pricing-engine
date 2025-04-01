@@ -20,6 +20,7 @@ import SignUp from "./pages/auth/SignUp";
 import SignIn from "./pages/auth/SingIn";
 import Items from "./pages/manage/Items";
 import Brand from "./pages/manage/Brand";
+import CycleComparison from "./pages/cycleComparision/CyclesComparison";
 
 function App() {
   return (
@@ -44,6 +45,7 @@ function App() {
                   <Route path="/calculate" element={<CalculateForm />} />
                   <Route path="/user/orders" element={<UserOrders/>} />
                   <Route path="/address" element={<Address />} />
+                  <Route path="/compare" element={<CycleComparison />}/>
                   <Route
                     path="/items"
                     element={

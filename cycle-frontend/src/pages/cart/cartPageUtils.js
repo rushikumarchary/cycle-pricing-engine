@@ -170,7 +170,8 @@ export const validateCouponApplication = (promoCode, couponState) => {
  * @returns {Object} Validation result
  */
 export const validateComparison = (existingItems, cartId) => {
-  if (existingItems.some(item => item.cartId === cartId)) {
+  // Check if the cartId already exists in the existingItems array
+  if (existingItems.some(item => item.cart.cartId === cartId)) {
     return { isValid: false, message: "Item already in comparison list" };
   }
   
