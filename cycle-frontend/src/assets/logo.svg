@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="120" height="40" viewBox="0 0 120 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Bicycle Wheel (Front) -->
+  <circle cx="80" cy="20" r="12" stroke="#FFC107" stroke-width="2"/>
+  <circle cx="80" cy="20" r="2" fill="#FFC107"/>
+  
+  <!-- Bicycle Wheel (Back) -->
+  <circle cx="40" cy="20" r="12" stroke="#FFC107" stroke-width="2"/>
+  <circle cx="40" cy="20" r="2" fill="#FFC107"/>
+  
+  <!-- Frame -->
+  <path d="M40 20L60 10L80 20" stroke="#FFC107" stroke-width="2" stroke-linecap="round"/>
+  <path d="M60 10L65 20" stroke="#FFC107" stroke-width="2" stroke-linecap="round"/>
+  
+  <!-- Handlebar -->
+  <path d="M75 15C75 15 85 15 85 20" stroke="#FFC107" stroke-width="2" stroke-linecap="round"/>
+  
+  <!-- Seat -->
+  <path d="M55 10L60 10" stroke="#FFC107" stroke-width="2" stroke-linecap="round"/>
+</svg> 
