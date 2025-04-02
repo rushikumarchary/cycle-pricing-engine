@@ -39,6 +39,7 @@ export const authAPI = {
         `${DomainName}/cart/cartItemCount`,
         getAuthHeader()
       );
+      console.log("cart count from auth api",response.data);
       return response.data;
     } catch (error) {
       console.error('Error fetching cart count:', error);
@@ -87,6 +88,7 @@ export const cartAPI = {
         `${DomainName}/cart/cartItemCount`,
         getAuthHeader()
       );
+      console.log("cart count from cart api",response.data);
    
       return response.data;
     } catch (error) {

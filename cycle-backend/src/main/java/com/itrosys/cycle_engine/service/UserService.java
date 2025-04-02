@@ -38,11 +38,7 @@ public class UserService {
         this.roleRepository=roleRepository;
     }
 
-//    public User register(User user) {
-//
-//        user.setPassword(passwordEncoder.encode(user.getPassword()));
-//        return userRepository.save(user);
-//    }
+
 public User register(User user) {
     List<User> existingUsers = userRepository.findByUsernameOrEmail(user.getUsername(), user.getEmail());
 
@@ -107,16 +103,5 @@ public User register(User user) {
     }
 
 
-//    public String verify(User user) {
-//        try {
-//            Authentication authentication = authManager.authenticate(
-//                    new UsernamePasswordAuthenticationToken(user.getUsername(), user.getPassword())
-//            );
-//            return jwtService.generateToken(user.getUsername());
-//        } catch (Exception e) {
-//            throw new BadCredentials("Authentication failed: " + e.getMessage());
-//
-//        }
-//    }
 
 }
