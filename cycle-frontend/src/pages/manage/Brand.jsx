@@ -28,14 +28,11 @@ const Brand = () => {
   // Add authentication check
   useEffect(() => {
     const checkAuth = () => {
-      // console.log("Checking authentication...");
       debugToken();
       if (!isAuthenticated()) {
-        // console.log("Authentication failed");
         navigate("/signIn", { state: { redirectTo: location.pathname } });
         return;
       }
-      // console.log("Authentication successful");
     };
 
     checkAuth();
@@ -47,28 +44,19 @@ const Brand = () => {
   // Fetch brands with auth check
   const fetchBrands = async () => {
     try {
-      console.log("Fetching brands...");
       debugToken();
 
       if (!isAuthenticated()) {
-        console.log("Not authenticated during fetch");
         return;
       }
 
       const response = await brandAPI.getAllBrands();
-      console.log("Brands fetch successful:", response);
       setBrands(response);
 
       if (response.length === 0) {
         toast.error("There are no brands available. Please add a new brand.")
       }
     } catch (error) {
-      // console.error("Fetch brands error:", error);
-      // if (error.response) {
-      //   console.log("Error response:", error.response);
-      //   console.log("Error status:", error.response.status);
-      //   console.log("Error data:", error.response.data);
-      // }
       handleApiError(error);
     }
   };

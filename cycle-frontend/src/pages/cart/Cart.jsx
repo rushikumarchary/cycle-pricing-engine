@@ -126,6 +126,7 @@ const Cart = () => {
     } else if (prices.subtotal > 0) {
       setShippingCost(200);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cart, selectedItems, couponState]);
 
   useEffect(() => {

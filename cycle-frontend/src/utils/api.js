@@ -87,6 +87,7 @@ export const cartAPI = {
         `${DomainName}/cart/cartItemCount`,
         getAuthHeader()
       );
+   
       return response.data;
     } catch (error) {
       console.error('Error fetching cart count:', error);
