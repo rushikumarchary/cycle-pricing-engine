@@ -92,6 +92,9 @@ const Cart = () => {
       setTotalPrice(prices.total);
       setTotalItemsQuantity(prices.selectedQuantity);
       
+      // Update cart count in context
+      updateCartCount(getTotalQuantity(data));
+      
     } catch (error) {
       if (!error.isHandled) {
         if (error.response && error.response.status === 401) {

@@ -4,14 +4,11 @@ import { FiMenu, FiX, FiLogOut, FiShoppingCart } from "react-icons/fi";
 import { FaCaretDown } from "react-icons/fa6";
 import { CgProfile } from "react-icons/cg";
 import { useAuth } from "../../hooks/useAuth";
-
 import { LuBaggageClaim } from "react-icons/lu";
-// import LanguageSwitcher from "../LanguageSwitcher";
 import { useTranslation } from "react-i18next";
 import { hasManagementAccess } from "../../utils/auth";
 import Logo from "../Logo";
 import useCart from "../../context/useCart";
-import { cartAPI } from "../../utils/api";
 
 function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -24,22 +21,9 @@ function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
   const { userName, userEmail, logout } = useAuth();
-  const { cartItemCount,updateCartCount } = useCart();
+  const { cartItemCount } = useCart();
   const { t } = useTranslation();
 
-   // Fetch cart count on component mount
-   useEffect(() => {
-    const fetchCartCount = async () => {
-      try {
-        const count = await cartAPI.getCartCount();
-        updateCartCount(count); // Update cart context with the fetched count
-      } catch (error) {
-        console.error("Error fetching cart count:", error);
-      }
-    };
-
-    fetchCartCount();
-  }, [updateCartCount]);
   // Add click outside handler for mobile menu and dropdowns
   useEffect(() => {
     function handleClickOutside(event) {
@@ -162,11 +146,6 @@ function Navbar() {
 
       {/* Right side items */}
       <div className="flex items-center gap-4">
-        {/* Language Switcher */}
-        {/* <div className="border-r border-[#3a6960] pr-4">
-          <LanguageSwitcher />
-        </div> */}
-        
         <Link
           to="/cart"
           className="px-4 text-lg p-1 text-[#dbe2e2] hover:bg-[#776862] transition-colors duration-300 rounded flex items-center relative"

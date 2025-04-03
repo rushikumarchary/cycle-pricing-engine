@@ -214,7 +214,14 @@ public class PaymentService {
             savePaymentOrder(razorpayOrder, savedOrders);
 
             // Delete all carts after successful order creation
-            cartRepository.deleteAllById(orderRequest.getCartIds());
+             // The cycle comparisons will be automatically deleted due to cascade
+            //  cartRepository.deleteAllById(orderRequest.getCartIds());
+            // First, find all carts to delete
+            List<Cart> cartsToDelete = cartRepository.findAllById(orderRequest.getCartIds());
+            // Delete each cart individually to ensure proper cascade
+            for (Cart cart : cartsToDelete) {
+                cartRepository.delete(cart);
+            }
 
             return generateOrderResponse(razorpayOrder, savedOrders);
 
