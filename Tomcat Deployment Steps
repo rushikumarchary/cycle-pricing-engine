@@ -1,0 +1,176 @@
+TOMCAT DEPLOYMENT STEPS
+-----------------------
+To run and test your **React** and **Spring Boot** application on **Tomcat** without using an IDE, you'll need to follow these steps for both the React front-end and the Spring Boot back-end separately.
+
+### Steps for Deploying React and Spring Boot Application
+
+#### **1. Build Your React Front-End**
+
+React applications need to be built into static files before they can be served by a web server like Tomcat. Here's how to do it:
+
+1. **Navigate to your React project folder:**
+
+```bash
+cd /path/to/your/react-app
+```
+
+2. **Install dependencies** (if you haven’t already):
+
+```bash
+npm install
+```
+
+3. **Build the React application**:
+
+```bash
+npm run build
+```
+
+This will create a `build/` directory with optimized static files (HTML, CSS, JS, etc.) that you can serve.
+
+#### **2. Set Up Your Spring Boot Back-End**
+
+Next, you need to package and build your Spring Boot application.
+
+1. **Navigate to your Spring Boot project folder:**
+
+```bash
+cd /path/to/your/springboot-app
+```
+
+2. **Build your Spring Boot project** (if it's a Maven project):
+
+```bash
+mvn clean package
+```
+
+For **Gradle**, you would run:
+
+```bash
+gradle build
+```
+
+This will create a `.jar` (or `.war` if your project is set up to produce a WAR) file in the `target/` (Maven) or `build/libs/` (Gradle) folder.
+
+#### **3. Integrating React with Spring Boot**
+
+You want your React app to be served by Spring Boot. This means you will need to copy the contents of your React `build/` directory into the **Spring Boot resources folder** (`src/main/resources/static`).
+
+Here's how to do it:
+
+1. **Copy React Build to Spring Boot Static Folder:**
+
+   After building your React app (step 1), copy the contents of the `build/` folder to the `src/main/resources/static/` directory of your Spring Boot application:
+
+   ```bash
+   cp -r /path/to/react-app/build/* /path/to/springboot-app/src/main/resources/static/
+   ```
+
+   This will make the React application accessible from your Spring Boot application.
+
+2. **Adjust the `application.properties` (optional):**
+
+   If needed, adjust your Spring Boot's `application.properties` file to configure any custom paths or other settings. But for basic usage, this shouldn’t be necessary.
+
+#### **4. Package Your Spring Boot Application for Tomcat**
+
+Spring Boot applications are typically packaged as executable `.jar` files, but to deploy to Tomcat, you need to package it as a `.war` file.
+
+If your Spring Boot app isn't already configured as a `.war` file, you can change it by doing the following:
+
+1. Open your `pom.xml` (for Maven) or `build.gradle` (for Gradle).
+   
+   - **For Maven:**
+   
+     In `pom.xml`, change the packaging type to `war`:
+
+     ```xml
+     <packaging>war</packaging>
+     ```
+
+     Then configure the Spring Boot application to use `SpringBootServletInitializer`:
+
+     ```java
+     @SpringBootApplication
+     public class Application extends SpringBootServletInitializer {
+         public static void main(String[] args) {
+             SpringApplication.run(Application.class, args);
+         }
+
+         @Override
+         protected SpringApplicationBuilder configure(SpringApplicationBuilder builder) {
+             return builder.sources(Application.class);
+         }
+     }
+     ```
+
+   - **For Gradle:**
+
+     In `build.gradle`, apply the `war` plugin:
+
+     ```groovy
+     apply plugin: 'war'
+     ```
+
+     Then configure it to extend `SpringBootServletInitializer`.
+
+2. **Build the WAR file**:
+
+   - For Maven:
+
+   ```bash
+   mvn clean package
+   ```
+
+   - For Gradle:
+
+   ```bash
+   gradle build
+   ```
+
+This will create a `.war` file in the `target/` (Maven) or `build/libs/` (Gradle) folder.
+
+#### **5. Deploy to Tomcat**
+
+1. **Copy the WAR file** into the `webapps/` folder of your Tomcat installation:
+
+   ```bash
+   cp /path/to/springboot-app/target/yourapp.war /path/to/tomcat/webapps/
+   ```
+
+2. **Start Tomcat** if it's not already running:
+
+   - On Linux/macOS:
+
+   ```bash
+   cd /path/to/tomcat/bin
+   ./catalina.sh start
+   ```
+
+   - On Windows:
+
+   ```bash
+   cd \path\to\tomcat\bin
+   catalina.bat start
+   ```
+
+#### **6. Access Your Application**
+
+Once the WAR file is deployed, you can access your Spring Boot and React application through your web browser:
+
+```
+http://localhost:8080/yourapp
+```
+
+This will load your React app served by Spring Boot on Tomcat.
+
+---
+
+### Summary:
+
+1. **React**: Build your React app using `npm run build` and copy the contents of the `build/` directory to `src/main/resources/static/` in your Spring Boot project.
+2. **Spring Boot**: Build your Spring Boot app as a `.war` (ensure it's packaged as a `.war` instead of a `.jar`), and configure `SpringBootServletInitializer` to run as a web app in Tomcat.
+3. **Tomcat**: Deploy the `.war` file to Tomcat's `webapps/` directory.
+4. **Testing**: Once deployed, you can access the app in your browser at `http://localhost:8080/yourapp`.
+
+This setup allows you to run your React and Spring Boot application together on Tomcat without using an IDE.
